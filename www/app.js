@@ -6,7 +6,7 @@
   /* ---------- storage ---------- */
   var KEY = 'ae:v1';
   var defaults = {
-    name: 'امیر',
+    name: '', named: false, deck: [], last: -1,
     notes: [], tasks: [],
     timer: { dur: 300, running: false, endAt: 0, remain: 300 },
     pomo: { mode: 'focus', running: false, endAt: 0, remain: 1500, cycle: 0, total: 0, days: {}, minutes: {},
@@ -15,7 +15,7 @@
   var S;
   function load() {
     try { S = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { S = {}; }
-    S.name = S.name || defaults.name;
+    S.name = S.name || ''; S.named = !!S.named; S.deck = S.deck || []; if (typeof S.last !== 'number') S.last = -1;
     S.notes = S.notes || []; S.tasks = S.tasks || [];
     S.timer = Object.assign({}, defaults.timer, S.timer || {});
     S.pomo = Object.assign({}, defaults.pomo, S.pomo || {});
@@ -86,6 +86,7 @@
     $$('#tabbar button').forEach(function (b) { b.classList.toggle('on', b.dataset.go === name); });
     var act = $('#v-' + name); if (act) act.scrollTop = 0;
     if (name === 'home') renderHome();
+    if (name === 'gym') renderGym();
   }
   document.addEventListener('click', function (e) {
     var t = e.target.closest('[data-go]'); if (!t) return;
@@ -95,11 +96,20 @@
     if (a === 'focus-task') setTimeout(function () { $('#task-input').focus(); }, 150);
   });
 
-  /* ---------- quote ---------- */
-  function todaysQuote() {
-    var d = new Date(); var i = (dayOfYear(d) + d.getFullYear()) % window.QUOTES.length;
-    return { i: i, q: window.QUOTES[i] };
+  /* ---------- quote (a fresh one on every launch, no repeats until all 100 are seen) ---------- */
+  function nextQuote() {
+    var n = window.QUOTES.length;
+    S.deck = (S.deck || []).filter(function (i) { return i >= 0 && i < n; });
+    if (!S.deck.length) {
+      var d = []; for (var i = 0; i < n; i++) d.push(i);
+      for (var k = n - 1; k > 0; k--) { var r = Math.floor(Math.random() * (k + 1)), t = d[k]; d[k] = d[r]; d[r] = t; }
+      if (d[0] === S.last) { var t2 = d[0]; d[0] = d[n - 1]; d[n - 1] = t2; }
+      S.deck = d;
+    }
+    var idx = S.deck.shift(); S.last = idx; save();
+    return { i: idx, q: window.QUOTES[idx] };
   }
+  var LQ = nextQuote();
 
   /* ---------- home ---------- */
   function greeting() {
@@ -110,7 +120,7 @@
     $('#greet').textContent = greeting();
     $('#uname').textContent = S.name;
     $('#today-pill').textContent = jalali(new Date(), { year: 'numeric', month: '2-digit', day: '2-digit' });
-    var tq = todaysQuote(); $('#hq-en').textContent = tq.q[0]; $('#hq-fa').textContent = tq.q[1];
+    $('#hq-en').textContent = LQ.q[0]; $('#hq-fa').textContent = LQ.q[1];
     var tot = S.tasks.length, done = S.tasks.filter(function (t) { return t.done; }).length;
     $('#home-task-sub').textContent = tot ? fa(done) + ' از ' + fa(tot) + ' تسک انجام شده' : 'هنوز تسکی اضافه نکردی';
     $('#home-task-bar').style.width = (tot ? Math.round(done / tot * 100) : 0) + '%';
@@ -119,7 +129,7 @@
   }
   $('#uname').addEventListener('click', function () {
     var n = prompt('اسمت چیه؟', S.name);
-    if (n && n.trim()) { S.name = n.trim().slice(0, 24); save(); renderHome(); }
+    if (n && n.trim()) { S.name = n.trim().slice(0, 24); S.named = true; save(); renderHome(); }
   });
 
   /* ---------- notes ---------- */
@@ -307,6 +317,153 @@
   $('#set-auto').checked = !!P.set.auto;
   $('#set-auto').addEventListener('change', function () { P.set.auto = this.checked; save(); });
 
+  /* ---------- gym (images kept in IndexedDB so they stay on the phone) ---------- */
+  var DB = null;
+  function idb() {
+    return new Promise(function (res, rej) {
+      if (DB) return res(DB);
+      var r = indexedDB.open('ae-gym', 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore('imgs', { keyPath: 'id' }); };
+      r.onsuccess = function () { DB = r.result; res(DB); };
+      r.onerror = function () { rej(r.error); };
+    });
+  }
+  function gymAll() {
+    return idb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var q = db.transaction('imgs').objectStore('imgs').getAll();
+        q.onsuccess = function () { res(q.result.sort(function (a, b) { return a.added - b.added; })); };
+        q.onerror = function () { rej(q.error); };
+      });
+    });
+  }
+  function gymPut(rec) {
+    return idb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction('imgs', 'readwrite'); tx.objectStore('imgs').put(rec);
+        tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
+      });
+    });
+  }
+  function gymDel(id) {
+    return idb().then(function (db) {
+      return new Promise(function (res, rej) {
+        var tx = db.transaction('imgs', 'readwrite'); tx.objectStore('imgs').delete(id);
+        tx.oncomplete = res; tx.onerror = function () { rej(tx.error); };
+      });
+    });
+  }
+  function shrink(file) {
+    return new Promise(function (res) {
+      var url = URL.createObjectURL(file), im = new Image();
+      im.onload = function () {
+        var w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, 2200 / Math.max(w, h));
+        if (k === 1 && file.size < 1500000) { URL.revokeObjectURL(url); return res(file); }
+        var c = document.createElement('canvas'); c.width = Math.round(w * k); c.height = Math.round(h * k);
+        c.getContext('2d').drawImage(im, 0, 0, c.width, c.height);
+        c.toBlob(function (b) { URL.revokeObjectURL(url); res(b || file); }, 'image/jpeg', 0.88);
+      };
+      im.onerror = function () { URL.revokeObjectURL(url); res(file); };
+      im.src = url;
+    });
+  }
+  var gymList = [], gymUrls = [];
+  function gymName(r, i) { return r.label || ('برنامه ' + fa(i + 1)); }
+  function renderGym() {
+    $('#gym-today').textContent = 'امروز ' + jalali(new Date(), { weekday: 'long' });
+    gymAll().then(function (list) {
+      gymList = list;
+      gymUrls.forEach(function (u) { URL.revokeObjectURL(u); }); gymUrls = [];
+      var box = $('#gym-grid'); box.innerHTML = '';
+      $('#gym-empty').classList.toggle('hidden', list.length > 0);
+      list.forEach(function (r, i) {
+        var u = URL.createObjectURL(r.blob); gymUrls.push(u);
+        var el = document.createElement('div'); el.className = 'card gym-card';
+        el.innerHTML = '<img alt=""><div class="g-label"></div><div class="g-date"></div>';
+        $('img', el).src = u;
+        $('.g-label', el).textContent = gymName(r, i);
+        $('.g-date', el).textContent = jalali(new Date(r.added), { month: 'long', day: 'numeric' });
+        el.addEventListener('click', function () { openViewer(i); });
+        box.appendChild(el);
+      });
+    }).catch(function () { toast('خواندن عکس‌ها ممکن نشد'); });
+  }
+  $('#gym-file').addEventListener('change', function () {
+    var files = Array.prototype.slice.call(this.files || []); this.value = '';
+    if (!files.length) return;
+    toast('در حال ذخیره…');
+    var chain = Promise.resolve();
+    files.forEach(function (f) {
+      chain = chain.then(function () { return shrink(f); }).then(function (b) { return gymPut({ id: uid(), blob: b, label: '', added: Date.now() }); });
+    });
+    chain.then(function () { toast('برنامه ذخیره شد 💪'); renderGym(); }).catch(function () { toast('ذخیره نشد. فضای گوشی رو چک کن'); });
+  });
+
+  // viewer with pinch-zoom, pan, double-tap and swipe
+  var vi = 0, vz = { s: 1, x: 0, y: 0 }, pts = {}, pinchD = 0, lastTap = 0, tapStart = null;
+  function applyZ() { $('#gv-img').style.transform = 'translate(' + vz.x + 'px,' + vz.y + 'px) scale(' + vz.s + ')'; }
+  function resetZ() { vz = { s: 1, x: 0, y: 0 }; applyZ(); }
+  function showAt(i) {
+    if (!gymList.length) return closeViewer();
+    vi = (i + gymList.length) % gymList.length; resetZ();
+    $('#gv-img').src = gymUrls[vi];
+    $('#gv-title').textContent = gymName(gymList[vi], vi);
+    $('#gv-count').textContent = fa(vi + 1) + ' از ' + fa(gymList.length);
+    $('#gv-prev').style.visibility = $('#gv-next').style.visibility = gymList.length > 1 ? 'visible' : 'hidden';
+  }
+  function openViewer(i) { $('#gym-viewer').classList.remove('hidden'); showAt(i); }
+  function closeViewer() { $('#gym-viewer').classList.add('hidden'); $('#gv-img').removeAttribute('src'); }
+  $('#gv-close').addEventListener('click', closeViewer);
+  $('#gv-next').addEventListener('click', function () { showAt(vi + 1); });
+  $('#gv-prev').addEventListener('click', function () { showAt(vi - 1); });
+  $('#gv-title').addEventListener('click', function () {
+    var r = gymList[vi]; if (!r) return;
+    var n = prompt('اسم این برنامه (مثلاً: روز ۱ - سینه و پشت بازو)', r.label || '');
+    if (n === null) return; r.label = n.trim().slice(0, 40);
+    gymPut(r).then(function () { $('#gv-title').textContent = gymName(r, vi); renderGym(); });
+  });
+  $('#gv-del').addEventListener('click', function () {
+    var r = gymList[vi]; if (!r || !confirm('این عکس برنامه حذف بشه؟')) return;
+    gymDel(r.id).then(function () { toast('حذف شد'); return gymAll(); }).then(function (list) {
+      closeViewer(); renderGym();
+    });
+  });
+  var stage = $('#gv-stage');
+  stage.addEventListener('pointerdown', function (e) {
+    stage.setPointerCapture(e.pointerId); pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+    if (Object.keys(pts).length === 1) tapStart = { x: e.clientX, y: e.clientY, t: Date.now() };
+    else tapStart = null;
+    pinchD = 0;
+  });
+  stage.addEventListener('pointermove', function (e) {
+    var p = pts[e.pointerId]; if (!p) return;
+    var px = p.x, py = p.y; p.x = e.clientX; p.y = e.clientY;
+    var ids = Object.keys(pts);
+    if (ids.length === 1) { if (vz.s > 1) { vz.x += p.x - px; vz.y += p.y - py; applyZ(); } }
+    else if (ids.length === 2) {
+      var a = pts[ids[0]], b = pts[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinchD) vz.s = Math.max(1, Math.min(6, vz.s * d / pinchD));
+      pinchD = d; applyZ();
+    }
+  });
+  function endPtr(e) {
+    var p = pts[e.pointerId]; if (!p) return;
+    delete pts[e.pointerId]; pinchD = 0;
+    if (Object.keys(pts).length) return;
+    if (vz.s <= 1.02) resetZ();
+    if (tapStart && e.type === 'pointerup') {
+      var dx = e.clientX - tapStart.x, dy = e.clientY - tapStart.y, dt = Date.now() - tapStart.t;
+      if (vz.s <= 1.02 && Math.abs(dx) > 70 && Math.abs(dy) < 60 && dt < 600) { showAt(dx < 0 ? vi + 1 : vi - 1); }
+      else if (Math.abs(dx) < 10 && Math.abs(dy) < 10 && dt < 300) {
+        var now = Date.now();
+        if (now - lastTap < 320) { if (vz.s > 1.02) resetZ(); else { vz.s = 2.5; applyZ(); } lastTap = 0; } else lastTap = now;
+      }
+    }
+    tapStart = null;
+  }
+  stage.addEventListener('pointerup', endPtr); stage.addEventListener('pointercancel', endPtr);
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
   /* ---------- tick ---------- */
   function tick() {
     if (T.running && Date.now() >= T.endAt) {
@@ -317,7 +474,8 @@
     if (current === 'pomo') renderPomo();
   }
   setInterval(tick, 500);
-  document.addEventListener('visibilitychange', function () { if (!document.hidden) { tick(); renderTimer(); renderPomo(); } });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) { tick(); renderTimer(); renderPomo(); renderHome(); } });
+  setInterval(function () { if (current === 'home') renderHome(); }, 60000);
 
   /* ---------- boot ---------- */
   function initState() {
@@ -327,15 +485,30 @@
   }
   initState();
 
-  var tq = todaysQuote();
-  $('#q-en').textContent = tq.q[0]; $('#q-fa').textContent = tq.q[1];
+  $('#q-en').textContent = LQ.q[0]; $('#q-fa').textContent = LQ.q[1];
   $('#q-day').textContent = jalali(new Date(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  function showQuote() { renderHome(); $('#quote-screen').classList.remove('hidden'); }
+  function showWelcome() {
+    var w = $('#welcome'); w.classList.remove('hidden');
+    $('#w-name').placeholder = 'اسمت رو بنویس…';
+    setTimeout(function () { $('#w-name').focus(); }, 600);
+  }
+  function finishWelcome() {
+    var inp = $('#w-name'), v = inp.value.trim();
+    if (!v) { inp.classList.add('shake'); setTimeout(function () { inp.classList.remove('shake'); }, 400); return; }
+    S.name = v.slice(0, 24); S.named = true; save();
+    var w = $('#welcome'); w.classList.add('out'); setTimeout(function () { w.remove(); }, 450);
+    inp.blur(); showQuote();
+  }
+  $('#w-go').addEventListener('click', finishWelcome);
+  $('#w-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') finishWelcome(); });
 
   var SPLASH_MS = 2900;
   setTimeout(function () {
     $('#splash').classList.add('out');
-    $('#quote-screen').classList.remove('hidden');
     $('#app').classList.remove('hidden');
+    if (S.named) showQuote(); else showWelcome();
     setTimeout(function () { $('#splash').remove(); }, 700);
   }, SPLASH_MS);
   $('#q-go').addEventListener('click', function () {

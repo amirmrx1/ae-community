@@ -82,7 +82,7 @@ svg{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-l
 
 /* ---------- Tab bar ---------- */
 #tabbar{position:absolute;bottom:0;inset-inline:0;display:flex;background:rgba(16,16,30,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:8px 8px calc(var(--sb) + 8px);gap:4px;z-index:5}
-#tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;border-radius:14px;color:var(--mut);font-size:10.5px;transition:.2s}
+#tabbar button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 6px;border-radius:14px;color:var(--mut);font-size:10px;transition:.2s}
 #tabbar svg{width:21px;height:21px}
 #tabbar button.on{background:linear-gradient(135deg,#8342eb,#9b5bff);color:#fff;box-shadow:0 6px 18px rgba(131,66,235,.35)}
 
@@ -173,3 +173,28 @@ body.pomo-break .ring-fg{stroke:#3ddc84;filter:drop-shadow(0 0 8px rgba(61,220,1
 #toast{position:fixed;bottom:calc(var(--sb) + 96px);left:50%;transform:translate(-50%,20px);background:#1d1733;border:1px solid rgba(131,66,235,.5);color:var(--text);padding:11px 18px;border-radius:14px;font-size:13px;opacity:0;pointer-events:none;transition:.3s;z-index:200;max-width:86vw;text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 ::-webkit-scrollbar{width:0}
+
+/* ---------- Welcome ---------- */
+#welcome{position:fixed;inset:0;z-index:95;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:calc(var(--st) + 24px) 24px calc(var(--sb) + 24px);animation:qin .5s ease both}
+#welcome.out{opacity:0;transition:.4s;pointer-events:none}
+.w-title{margin:6px 0 4px;font-size:26px;font-weight:800;animation:fadeUp2 .7s ease .15s both}
+.w-sub{margin:0 0 22px;color:var(--mut);font-size:14px;animation:fadeUp2 .7s ease .3s both}
+.w-input{text-align:center;font-size:17px;padding:15px;animation:fadeUp2 .7s ease .45s both}
+#welcome .q-go{animation:fadeUp2 .7s ease .6s both}
+.w-input.shake{animation:shake .35s;border-color:var(--red)}
+@keyframes shake{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+
+/* ---------- Gym ---------- */
+.gym-add{display:block;text-align:center;margin-bottom:18px;cursor:pointer}
+#gym-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.gym-card{padding:8px;cursor:pointer;transition:transform .15s,border-color .2s}
+.gym-card:active{transform:scale(.97);border-color:rgba(131,66,235,.5)}
+.gym-card img{display:block;width:100%;aspect-ratio:3/4;object-fit:cover;border-radius:12px;background:#12121f}
+.g-label{font-size:13px;font-weight:700;margin:9px 4px 2px}
+.g-date{font-size:11px;color:var(--mut);margin:0 4px 4px}
+#gym-viewer{position:fixed;inset:0;z-index:60;background:#05050b;display:flex;flex-direction:column;padding:calc(var(--st) + 10px) 12px calc(var(--sb) + 12px);animation:qin .2s ease both}
+.gv-bar{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.gv-title{flex:1;text-align:center;font-weight:700;font-size:15px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gv-stage{flex:1;overflow:hidden;touch-action:none;display:flex;align-items:center;justify-content:center;border-radius:14px}
+.gv-stage img{max-width:100%;max-height:100%;object-fit:contain;transform-origin:center;user-select:none;-webkit-user-drag:none;will-change:transform}
+.gv-nav{display:flex;align-items:center;justify-content:space-between;padding-top:10px;color:var(--mut);font-size:13px}
