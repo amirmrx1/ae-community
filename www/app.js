@@ -21,6 +21,8 @@
     S.pomo = Object.assign({}, defaults.pomo, S.pomo || {});
     S.pomo.set = Object.assign({}, defaults.pomo.set, S.pomo.set || {});
     S.pomo.days = S.pomo.days || {}; S.pomo.minutes = S.pomo.minutes || {};
+    S.coach = Object.assign({ mode: 'goggins', answers: null, plan: null }, S.coach || {});
+    S.coach.hist = S.coach.hist || {}; S.coach.hist.goggins = S.coach.hist.goggins || []; S.coach.hist.money = S.coach.hist.money || [];
   }
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
   load();
@@ -87,6 +89,7 @@
     var act = $('#v-' + name); if (act) act.scrollTop = 0;
     if (name === 'home') renderHome();
     if (name === 'gym') renderGym();
+    if (name === 'coach') renderCoach();
   }
   document.addEventListener('click', function (e) {
     var t = e.target.closest('[data-go]'); if (!t) return;
@@ -126,6 +129,7 @@
     $('#home-task-bar').style.width = (tot ? Math.round(done / tot * 100) : 0) + '%';
     $('#home-notes-sub').textContent = fa(S.notes.length) + ' یادداشت';
     $('#home-pomo-sub').textContent = fa(S.pomo.days[dayKey()] || 0) + ' پومودورو امروز';
+    $('#home-coach-sub').textContent = S.coach.plan ? 'پلنت آماده‌ست. بریم سراغ قدم‌های امروز' : 'آزمون بده، هدفت رو به قدم‌های روزانه تبدیل کن';
   }
   $('#uname').addEventListener('click', function () {
     var n = prompt('اسمت چیه؟', S.name);
@@ -463,6 +467,181 @@
   }
   stage.addEventListener('pointerup', endPtr); stage.addEventListener('pointercancel', endPtr);
   try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
+  /* ---------- coach (AI via your Cloudflare Worker) ---------- */
+  var QUIZ = [
+    { q: 'هدف اصلیت برای ۹۰ روز آینده چیه؟', h: 'دقیق بنویس. مثلاً «ساخت شرکت تولید محتوا و رسیدن به ۳ مشتری ثابت».', t: 'text' },
+    { q: 'چرا این هدف برات مهمه؟', h: 'دلیل واقعی‌ت رو بنویس، نه جواب قشنگ. اینه که تو روزهای سخت نگهت می‌داره.', t: 'text' },
+    { q: 'الان دقیقاً کجایی؟', h: 'وضعیت فعلی: مهارت‌ها، تیم، مشتری، درآمد یا هر چیزی که مربوطه.', t: 'text' },
+    { q: 'روزی چند ساعت واقعاً می‌تونی برای این هدف وقت بذاری؟', t: 'choice', c: ['۱ تا ۲ ساعت', '۳ تا ۴ ساعت', '۵ تا ۶ ساعت', 'بیشتر از ۶ ساعت'] },
+    { q: 'بزرگ‌ترین مانعت چیه؟', t: 'choice', c: ['اهمال‌کاری و بی‌انضباطی', 'نداشتن مشتری یا درآمد', 'نداشتن مهارت کافی', 'بی‌برنامگی و شلوغی ذهن', 'ترس از شکست یا قضاوت', 'نداشتن سرمایه یا ابزار'] },
+    { q: 'چه مهارت‌ها و دارایی‌هایی داری؟', h: 'مهارت، تجربه، ابزار، شبکه‌ی آشنایان، هرچی که به هدفت کمک می‌کنه.', t: 'text' },
+    { q: 'دفعه‌های قبل چرا رها کردی؟', h: 'صادق باش. این‌جا قراره نقطه‌ضعف رو پیدا کنیم، نه قضاوتت کنیم.', t: 'text' },
+    { q: 'کدوم ساعت از روز بیشترین انرژی رو داری؟', t: 'choice', c: ['صبح زود', 'صبح تا ظهر', 'بعدازظهر', 'عصر تا شب', 'آخر شب'] },
+    { q: '۹۰ روز دیگه اگه موفق شده باشی، چی تغییر کرده؟', h: 'اون روز رو تصور کن و بنویس چی می‌بینی: عدد، مشتری، عادت، حس.', t: 'text' }
+  ];
+  var qi = 0, qans = [], coachBusy = false;
+  var MODE_NAME = { goggins: 'استمرار و رشد', money: 'پول‌سازی' };
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function inline(s) { return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>'); }
+  function md(src) {
+    var lines = String(src).replace(/\r/g, '').split('\n'), out = [], list = null;
+    function close() { if (list) { out.push('</' + list + '>'); list = null; } }
+    lines.forEach(function (ln) {
+      var t = ln.trim(), m;
+      if (!t) { close(); return; }
+      if ((m = t.match(/^#{1,4}\s+(.*)$/))) { close(); out.push('<h4>' + inline(m[1]) + '</h4>'); return; }
+      if ((m = t.match(/^[-*•]\s+(.*)$/))) { if (list !== 'ul') { close(); out.push('<ul>'); list = 'ul'; } out.push('<li>' + inline(m[1]) + '</li>'); return; }
+      if ((m = t.match(/^(\d+|[۰-۹]+)[.)\-]\s+(.*)$/))) { if (list !== 'ol') { close(); out.push('<ol>'); list = 'ol'; } out.push('<li>' + inline(m[2]) + '</li>'); return; }
+      close(); out.push('<p>' + inline(t) + '</p>');
+    });
+    close(); return out.join('');
+  }
+  function splitPlan(text) {
+    var daily = null, shown = text, m = text.match(/```json\s*([\s\S]*?)```/i);
+    if (m) {
+      try { var o = JSON.parse(m[1]); if (o && Array.isArray(o.daily)) daily = o.daily; } catch (e) {}
+      shown = text.replace(/```json[\s\S]*?```/i, '').trim();
+    }
+    return { text: shown, daily: daily };
+  }
+  function aiCall(body) {
+    var cfg = window.AE_AI || {};
+    if (!cfg.url) return Promise.reject({ code: 'noconf' });
+    var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, 70000);
+    var headers = { 'Content-Type': 'application/json' }; if (cfg.key) headers['X-AE-Key'] = cfg.key;
+    return fetch(cfg.url.replace(/\/+$/, '') + '/chat', { method: 'POST', headers: headers, body: JSON.stringify(body), signal: ctl.signal })
+      .then(function (r) { clearTimeout(timer); if (!r.ok) throw { code: r.status }; return r.json(); })
+      .then(function (j) { if (!j || !j.reply) throw { code: 'empty' }; return j.reply; })
+      .catch(function (e) { clearTimeout(timer); if (e && e.name === 'AbortError') throw { code: 'timeout' }; if (e && e.code) throw e; throw { code: 'network' }; });
+  }
+  function errText(e) {
+    var c = e && e.code;
+    if (c === 'noconf') return 'مربی هنوز به سرور وصل نشده. آدرس Worker رو توی config.js بذار و اپ رو دوباره بیلد کن.';
+    if (c === 429) return 'سهمیه‌ی رایگان امروز تموم شده. فردا دوباره برگرد، یا یه کم بعد امتحان کن.';
+    if (c === 401) return 'کلید دسترسی اشتباهه. config.js و APP_KEY سرور باید یکی باشن.';
+    if (c === 'timeout') return 'جواب دیر اومد. دوباره امتحان کن.';
+    if (c === 'network') return 'به سرور وصل نشد. اینترنت (یا VPN) رو چک کن و دوباره بزن.';
+    return 'یه مشکلی پیش اومد. دوباره امتحان کن.';
+  }
+  function histOf() { return S.coach.hist[S.coach.mode]; }
+  function profileBody() { return { name: S.name, answers: S.coach.answers || [] }; }
+
+  function addBubble(cls, html, raw) {
+    var box = $('#coach-chat'), el = document.createElement('div');
+    el.className = 'msg ' + cls; if (raw) el.innerHTML = html; else el.textContent = html;
+    box.appendChild(el); box.scrollTop = box.scrollHeight; return el;
+  }
+  function showTyping(on) {
+    var box = $('#coach-chat'), old = $('.typing', box); if (old) old.remove();
+    if (on) { var t = document.createElement('div'); t.className = 'typing'; t.innerHTML = '<i></i><i></i><i></i>'; box.appendChild(t); box.scrollTop = box.scrollHeight; }
+  }
+  function renderCoach() {
+    $('#coach-pill').textContent = S.coach.plan ? 'پلن فعال' : 'بدون پلن';
+    $$('#coach-mode button').forEach(function (b) { b.classList.toggle('on', b.dataset.m === S.coach.mode); });
+    $('#coach-quiz-btn').textContent = S.coach.plan ? 'آزمون دوباره' : 'آزمون و ساخت پلن';
+    $('#coach-today-btn').classList.toggle('hidden', !(S.coach.plan && S.coach.plan.daily));
+    var box = $('#coach-chat'); box.innerHTML = '';
+    var h = histOf();
+    if (!h.length) {
+      addBubble('sys', S.coach.mode === 'goggins'
+        ? 'حالت استمرار: بی‌بهانه، با انضباط و قدم‌های کوچیک ولی هر روز. هدفت رو بگو یا آزمون بده.'
+        : 'حالت پول‌سازی: مشتری، پیشنهاد، فروش و عدد. هدف مالی‌ت رو بگو یا آزمون بده.');
+    }
+    h.forEach(function (m) {
+      if (m.role === 'user') addBubble('me', m.content);
+      else addBubble('ai', md(m.plan ? m.content : m.content), true);
+    });
+    box.scrollTop = box.scrollHeight;
+  }
+  function setBusy(b) { coachBusy = b; $('#coach-send').disabled = b; $('#qz-next').disabled = b; showTyping(b); }
+
+  function sendChat() {
+    if (coachBusy) return;
+    var ta = $('#coach-text'), text = ta.value.trim(); if (!text) return;
+    ta.value = ''; ta.style.height = 'auto';
+    var h = histOf(); h.push({ role: 'user', content: text }); save(); addBubble('me', text);
+    setBusy(true);
+    aiCall({ mode: S.coach.mode, task: 'chat', messages: h.map(function (m) { return { role: m.role, content: m.plan ? m.content.slice(0, 1200) : m.content }; }),
+             profile: profileBody(), plan: S.coach.plan ? S.coach.plan.text : '' })
+      .then(function (reply) { h.push({ role: 'assistant', content: reply }); if (h.length > 40) h.splice(0, h.length - 40); save(); setBusy(false); addBubble('ai', md(reply), true); })
+      .catch(function (e) { setBusy(false); h.pop(); save(); addBubble('err', errText(e)); });
+  }
+  $('#coach-send').addEventListener('click', sendChat);
+  $('#coach-text').addEventListener('input', function () { this.style.height = 'auto'; this.style.height = Math.min(110, this.scrollHeight) + 'px'; });
+  $('#coach-mode').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b || coachBusy) return;
+    S.coach.mode = b.dataset.m; save(); renderCoach();
+  });
+
+  /* quiz */
+  function openQuiz() { qi = 0; qans = []; $('#quiz').classList.remove('hidden'); showQ(); }
+  function closeQuiz() { $('#quiz').classList.add('hidden'); }
+  function showQ() {
+    var q = QUIZ[qi];
+    $('#qz-q').textContent = q.q; $('#qz-hint').textContent = q.h || '';
+    $('#qz-count').textContent = fa(qi + 1) + '/' + fa(QUIZ.length);
+    $('#qz-prog').style.width = ((qi + 1) / QUIZ.length * 100) + '%';
+    $('#qz-back').style.visibility = qi ? 'visible' : 'hidden';
+    $('#qz-next').textContent = qi === QUIZ.length - 1 ? 'ساخت پلن' : 'بعدی';
+    var ch = $('#qz-choices'), ta = $('#qz-text'); ch.innerHTML = '';
+    var prev = qans[qi] || '';
+    if (q.t === 'choice') {
+      ta.classList.add('hidden');
+      q.c.forEach(function (c) {
+        var b = document.createElement('button'); b.textContent = c; if (prev === c) b.classList.add('on');
+        b.addEventListener('click', function () { $$('button', ch).forEach(function (x) { x.classList.remove('on'); }); b.classList.add('on'); qans[qi] = c; });
+        ch.appendChild(b);
+      });
+    } else { ta.classList.remove('hidden'); ta.value = prev; setTimeout(function () { ta.focus(); }, 200); }
+  }
+  function nextQ() {
+    if (coachBusy) return;
+    var q = QUIZ[qi];
+    if (q.t === 'text') qans[qi] = $('#qz-text').value.trim();
+    if (!qans[qi]) { toast(q.t === 'choice' ? 'یکی رو انتخاب کن' : 'یه چیزی بنویس'); return; }
+    if (qi < QUIZ.length - 1) { qi++; showQ(); return; }
+    buildPlan();
+  }
+  $('#qz-next').addEventListener('click', nextQ);
+  $('#qz-back').addEventListener('click', function () { if (qi > 0 && !coachBusy) { if (QUIZ[qi].t === 'text') qans[qi] = $('#qz-text').value.trim(); qi--; showQ(); } });
+  $('#qz-close').addEventListener('click', function () { if (!coachBusy) closeQuiz(); });
+  $('#coach-quiz-btn').addEventListener('click', function () { if (S.coach.plan && !confirm('آزمون دوباره پلن قبلی رو عوض می‌کنه. ادامه بدیم؟')) return; openQuiz(); });
+
+  function buildPlan() {
+    S.coach.answers = QUIZ.map(function (q, i) { return { q: q.q, a: qans[i] }; });
+    $('#qz-next').textContent = 'در حال چیدن پلن…'; setBusy(true);
+    aiCall({ mode: S.coach.mode, task: 'plan', messages: [{ role: 'user', content: 'آزمون رو جواب دادم. پلنم رو بچین.' }], profile: profileBody() })
+      .then(function (reply) {
+        var p = splitPlan(reply);
+        S.coach.plan = { text: p.text, daily: p.daily, mode: S.coach.mode, start: dayKey(), added: {} };
+        var h = histOf(); h.push({ role: 'assistant', content: p.text, plan: true }); save();
+        setBusy(false); closeQuiz(); go('coach'); renderCoach(); renderHome();
+        toast('پلنت آماده شد 🔥');
+      })
+      .catch(function (e) { setBusy(false); $('#qz-next').textContent = 'ساخت پلن'; save(); toast(errText(e)); });
+  }
+
+  /* today's steps -> tasks */
+  function todaySteps() {
+    var pl = S.coach.plan; if (!pl || !pl.daily || !pl.daily.length) return [];
+    var start = new Date(pl.start + 'T00:00:00'), n = Math.floor((new Date(dayKey() + 'T00:00:00') - start) / 86400000);
+    var d = pl.daily[Math.max(0, Math.min(pl.daily.length - 1, n))];
+    return (d && Array.isArray(d.steps) ? d.steps : []).filter(function (s) { return s && s.title; });
+  }
+  $('#coach-today-btn').addEventListener('click', function () {
+    var steps = todaySteps(), k = dayKey(), pl = S.coach.plan; pl.added = pl.added || {};
+    if (!steps.length) { toast('قدمی برای امروز پیدا نشد'); return; }
+    var added = 0;
+    steps.forEach(function (s) {
+      var title = String(s.title).slice(0, 100) + (s.minutes ? ' (' + fa(Math.round(s.minutes)) + ' دقیقه)' : ''), id = k + '|' + title;
+      if (pl.added[id]) return; pl.added[id] = 1;
+      S.tasks.push({ id: uid(), text: title, done: false, p: 2, c: Date.now() + added }); added++;
+    });
+    save(); renderTasks(); renderHome();
+    toast(added ? fa(added) + ' قدم به تسک‌ها اضافه شد 💪' : 'قدم‌های امروز قبلاً اضافه شدن');
+  });
 
   /* ---------- tick ---------- */
   function tick() {
