@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#0a0a14">
+<title>AE</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Splash -->
+<div id="splash" aria-hidden="true">
+  <div class="sp-glow"></div>
+  <div class="sp-stage">
+    <div class="sp-ring r1"></div>
+    <div class="sp-ring r2"></div>
+    <div class="sp-logo-wrap">
+      <img class="sp-logo" src="assets/logo.png" alt="AE">
+      <div class="sp-shine"></div>
+    </div>
+  </div>
+  <div class="sp-word">STAY&nbsp;HARD</div>
+  <div class="sp-bar"><i></i></div>
+</div>
+
+<!-- Daily quote -->
+<div id="quote-screen" class="hidden">
+  <div class="q-glow"></div>
+  <div class="q-inner">
+    <img class="q-logo" src="assets/logo.png" alt="AE">
+    <div class="q-label">جمله‌ی امروز · دیوید گاگینز</div>
+    <div class="q-mark">“</div>
+    <p class="q-en" id="q-en" dir="ltr"></p>
+    <p class="q-fa" id="q-fa"></p>
+    <div class="q-day" id="q-day"></div>
+    <button class="btn-primary q-go" id="q-go">بزن بریم</button>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app" class="hidden">
+  <main id="views">
+
+    <!-- Dashboard -->
+    <section class="view active" id="v-home">
+      <header class="top">
+        <div class="pill" id="today-pill"></div>
+        <h1><span id="greet"></span>، <b id="uname" title="تغییر نام"></b></h1>
+      </header>
+
+      <div class="sec-title">جمله‌ی امروز</div>
+      <div class="card quote-card" id="home-quote">
+        <p class="hq-en" dir="ltr" id="hq-en"></p>
+        <p class="hq-fa" id="hq-fa"></p>
+      </div>
+
+      <div class="sec-title">ادامه‌ی کار</div>
+      <div class="card row-card" data-go="tasks">
+        <div class="chip"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></div>
+        <div class="grow">
+          <div class="rc-title">تسک‌های امروز</div>
+          <div class="rc-sub" id="home-task-sub"></div>
+          <div class="progress"><i id="home-task-bar"></i></div>
+        </div>
+        <svg class="arrow" viewBox="0 0 24 24"><use href="#i-arrow"/></svg>
+      </div>
+
+      <div class="sec-title">دسترسی سریع</div>
+      <div class="grid2">
+        <div class="card tile" data-go="notes" data-action="new-note">
+          <div class="chip"><svg viewBox="0 0 24 24"><use href="#i-note"/></svg></div>
+          <div class="t-title">یادداشت جدید</div><div class="t-sub" id="home-notes-sub"></div>
+        </div>
+        <div class="card tile" data-go="tasks" data-action="focus-task">
+          <div class="chip"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></div>
+          <div class="t-title">تسک جدید</div><div class="t-sub">کارهای باز و انجام‌شده</div>
+        </div>
+        <div class="card tile" data-go="pomo">
+          <div class="chip"><svg viewBox="0 0 24 24"><use href="#i-pomo"/></svg></div>
+          <div class="t-title">پومودورو</div><div class="t-sub" id="home-pomo-sub"></div>
+        </div>
+        <div class="card tile" data-go="timer">
+          <div class="chip"><svg viewBox="0 0 24 24"><use href="#i-timer"/></svg></div>
+          <div class="t-title">تایمر</div><div class="t-sub">شمارش معکوس</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Notes -->
+    <section class="view" id="v-notes">
+      <header class="top"><h1>یادداشت‌ها</h1></header>
+      <input class="input" id="note-search" type="search" placeholder="جستجو در یادداشت‌ها…">
+      <div id="notes-list"></div>
+      <button class="fab" id="note-add" aria-label="یادداشت جدید"><svg viewBox="0 0 24 24"><use href="#i-plus"/></svg></button>
+    </section>
+
+    <!-- Tasks -->
+    <section class="view" id="v-tasks">
+      <header class="top"><h1>تسک‌ها</h1></header>
+      <div class="card add-task">
+        <input class="input flat" id="task-input" placeholder="تسک جدید…" maxlength="140">
+        <button class="prio" id="task-prio" data-p="1">متوسط</button>
+        <button class="btn-primary sm" id="task-add">افزودن</button>
+      </div>
+      <div class="progress big"><i id="task-bar"></i></div>
+      <div class="seg" id="task-filter">
+        <button data-f="all" class="on">همه</button>
+        <button data-f="open">باز</button>
+        <button data-f="done">انجام‌شده</button>
+      </div>
+      <div id="tasks-list"></div>
+    </section>
+
+    <!-- Timer -->
+    <section class="view" id="v-timer">
+      <header class="top"><h1>تایمر</h1></header>
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 200 200">
+          <circle class="ring-bg" cx="100" cy="100" r="90"/>
+          <circle class="ring-fg" id="timer-ring" cx="100" cy="100" r="90"/>
+        </svg>
+        <div class="ring-center">
+          <div class="big-time" id="timer-time">۰۰:۰۰</div>
+          <div class="ring-sub" id="timer-sub">آماده</div>
+        </div>
+      </div>
+      <div class="presets" id="timer-presets">
+        <button data-m="1">۱ دقیقه</button>
+        <button data-m="5">۵ دقیقه</button>
+        <button data-m="10">۱۰ دقیقه</button>
+        <button data-m="15">۱۵ دقیقه</button>
+        <button data-m="30">۳۰ دقیقه</button>
+        <button data-m="60">۱ ساعت</button>
+      </div>
+      <div class="custom">
+        <label>دقیقه <input class="input num" id="timer-min" type="number" min="0" max="999" value="0" inputmode="numeric"></label>
+        <label>ثانیه <input class="input num" id="timer-sec" type="number" min="0" max="59" value="0" inputmode="numeric"></label>
+        <button class="btn-ghost" id="timer-set">تنظیم</button>
+      </div>
+      <div class="ctrl">
+        <button class="btn-ghost" id="timer-reset">ریست</button>
+        <button class="btn-primary big" id="timer-toggle">شروع</button>
+      </div>
+    </section>
+
+    <!-- Pomodoro -->
+    <section class="view" id="v-pomo">
+      <header class="top"><h1>پومودورو</h1></header>
+      <div class="seg" id="pomo-modes">
+        <button data-mode="focus" class="on">تمرکز</button>
+        <button data-mode="short">استراحت کوتاه</button>
+        <button data-mode="long">استراحت بلند</button>
+      </div>
+      <div class="ring-wrap">
+        <svg class="ring" viewBox="0 0 200 200">
+          <circle class="ring-bg" cx="100" cy="100" r="90"/>
+          <circle class="ring-fg" id="pomo-ring" cx="100" cy="100" r="90"/>
+        </svg>
+        <div class="ring-center">
+          <div class="big-time" id="pomo-time">۲۵:۰۰</div>
+          <div class="ring-sub" id="pomo-sub">زمان تمرکز</div>
+        </div>
+      </div>
+      <div class="dots" id="pomo-dots"></div>
+      <div class="ctrl">
+        <button class="btn-ghost" id="pomo-reset">ریست</button>
+        <button class="btn-primary big" id="pomo-toggle">شروع</button>
+        <button class="btn-ghost" id="pomo-skip">رد کردن</button>
+      </div>
+      <div class="card pomo-stats">
+        <div><b id="ps-today">۰</b><span>پومودوروی امروز</span></div>
+        <div><b id="ps-minutes">۰</b><span>دقیقه تمرکز</span></div>
+        <div><b id="ps-total">۰</b><span>کل پومودوروها</span></div>
+      </div>
+      <details class="card settings">
+        <summary>تنظیمات پومودورو</summary>
+        <div class="set-grid">
+          <label>تمرکز (دقیقه)<input class="input num" id="set-focus" type="number" min="1" max="120" inputmode="numeric"></label>
+          <label>استراحت کوتاه<input class="input num" id="set-short" type="number" min="1" max="60" inputmode="numeric"></label>
+          <label>استراحت بلند<input class="input num" id="set-long" type="number" min="1" max="90" inputmode="numeric"></label>
+          <label class="check"><input type="checkbox" id="set-auto"> شروع خودکار مرحله‌ی بعد</label>
+        </div>
+      </details>
+    </section>
+  </main>
+
+  <nav id="tabbar">
+    <button data-go="home" class="on"><svg viewBox="0 0 24 24"><use href="#i-home"/></svg><span>داشبورد</span></button>
+    <button data-go="notes"><svg viewBox="0 0 24 24"><use href="#i-note"/></svg><span>یادداشت</span></button>
+    <button data-go="tasks"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg><span>تسک</span></button>
+    <button data-go="timer"><svg viewBox="0 0 24 24"><use href="#i-timer"/></svg><span>تایمر</span></button>
+    <button data-go="pomo"><svg viewBox="0 0 24 24"><use href="#i-pomo"/></svg><span>پومودورو</span></button>
+  </nav>
+</div>
+
+<!-- Note editor -->
+<div id="editor" class="hidden">
+  <div class="ed-bar">
+    <button class="btn-ghost sm" id="ed-back">بازگشت</button>
+    <div class="grow"></div>
+    <button class="icon-btn" id="ed-pin" aria-label="سنجاق"><svg viewBox="0 0 24 24"><use href="#i-pin"/></svg></button>
+    <button class="icon-btn danger" id="ed-del" aria-label="حذف"><svg viewBox="0 0 24 24"><use href="#i-trash"/></svg></button>
+  </div>
+  <input class="ed-title" id="ed-title" placeholder="عنوان" maxlength="120">
+  <textarea class="ed-body" id="ed-body" placeholder="بنویس…"></textarea>
+  <div class="ed-foot" id="ed-foot"></div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Icons -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+    <symbol id="i-note" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></symbol>
+    <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 2.5h5M12 2.5V6"/></symbol>
+    <symbol id="i-pomo" viewBox="0 0 24 24"><path d="M12 7c-4.4 0-7 2.9-7 6.3C5 17.2 8 20.5 12 20.5s7-3.3 7-7.2C19 9.9 16.4 7 12 7z"/><path d="M12 7c0-1.8.9-3.1 2.6-3.8M9 5.5c1.2.1 2.2.8 3 1.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5m6-6-6 6 6 6"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></symbol>
+  </defs>
+</svg>
+
+<script src="quotes.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

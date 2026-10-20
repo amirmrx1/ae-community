@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AE</string>
+    <string name="title_activity_main">AE</string>
+    <string name="package_name">com.tava.ae</string>
+    <string name="custom_url_scheme">com.tava.ae</string>
+</resources>
