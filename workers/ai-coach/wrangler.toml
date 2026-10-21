@@ -1,7 +1,0 @@
-name = "ae-coach"
-main = "src/index.js"
-compatibility_date = "2025-01-01"
-
-# Workers AI runs inside Cloudflare: no external API key needed.
-[ai]
-binding = "AI"

@@ -70,8 +70,8 @@
       <div class="card row-card coach-card" data-go="coach">
         <div class="chip"><svg viewBox="0 0 24 24"><use href="#i-coach"/></svg></div>
         <div class="grow">
-          <div class="rc-title">مربی AE</div>
-          <div class="rc-sub" id="home-coach-sub"></div>
+          <div class="rc-title">مربی هوشمند</div>
+          <div class="rc-sub" id="home-coach-sub">آزمون هدف‌یابی، نقشه‌ی راه و قدم‌های روزانه</div>
         </div>
         <svg class="arrow" viewBox="0 0 24 24"><use href="#i-arrow"/></svg>
       </div>
@@ -132,6 +132,9 @@
       </div>
       <div id="tasks-list"></div>
     </section>
+
+    <!-- Coach -->
+    <section class="view" id="v-coach"><div id="coach-root"></div></section>
 
     <!-- Gym -->
     <section class="view" id="v-gym">
@@ -212,33 +215,16 @@
         </div>
       </details>
     </section>
-    <!-- Coach -->
-    <section class="view" id="v-coach">
-      <header class="top"><div class="pill" id="coach-pill"></div><h1>مربی AE</h1></header>
-      <div class="seg" id="coach-mode">
-        <button data-m="goggins" class="on">🔥 استمرار و رشد</button>
-        <button data-m="money">💰 پول‌سازی</button>
-      </div>
-      <div class="coach-actions">
-        <button class="btn-ghost sm" id="coach-quiz-btn">آزمون و ساخت پلن</button>
-        <button class="btn-ghost sm hidden" id="coach-today-btn">قدم‌های امروز ← تسک‌ها</button>
-      </div>
-      <div id="coach-chat"></div>
-      <div class="coach-input">
-        <textarea id="coach-text" rows="1" maxlength="1500" placeholder="هر سوالی داری بپرس…"></textarea>
-        <button class="btn-primary sm" id="coach-send">ارسال</button>
-      </div>
-    </section>
   </main>
 
   <nav id="tabbar">
     <button data-go="home" class="on"><svg viewBox="0 0 24 24"><use href="#i-home"/></svg><span>داشبورد</span></button>
+    <button data-go="coach"><svg viewBox="0 0 24 24"><use href="#i-coach"/></svg><span>مربی</span></button>
     <button data-go="notes"><svg viewBox="0 0 24 24"><use href="#i-note"/></svg><span>یادداشت</span></button>
     <button data-go="tasks"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg><span>تسک</span></button>
     <button data-go="gym"><svg viewBox="0 0 24 24"><use href="#i-gym"/></svg><span>باشگاه</span></button>
     <button data-go="timer"><svg viewBox="0 0 24 24"><use href="#i-timer"/></svg><span>تایمر</span></button>
     <button data-go="pomo"><svg viewBox="0 0 24 24"><use href="#i-pomo"/></svg><span>پومودورو</span></button>
-    <button data-go="coach"><svg viewBox="0 0 24 24"><use href="#i-coach"/></svg><span>مربی</span></button>
   </nav>
 </div>
 
@@ -253,25 +239,6 @@
   <input class="ed-title" id="ed-title" placeholder="عنوان" maxlength="120">
   <textarea class="ed-body" id="ed-body" placeholder="بنویس…"></textarea>
   <div class="ed-foot" id="ed-foot"></div>
-</div>
-
-<!-- Quiz -->
-<div id="quiz" class="hidden">
-  <div class="qz-bar">
-    <button class="icon-btn" id="qz-close" aria-label="بستن"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
-    <div class="qz-prog"><i id="qz-prog"></i></div>
-    <div class="qz-count" id="qz-count"></div>
-  </div>
-  <div class="qz-body">
-    <div class="qz-q" id="qz-q"></div>
-    <div class="qz-hint" id="qz-hint"></div>
-    <div id="qz-choices" class="qz-choices"></div>
-    <textarea class="input qz-text" id="qz-text" rows="4" maxlength="500"></textarea>
-  </div>
-  <div class="qz-foot">
-    <button class="btn-ghost" id="qz-back">قبلی</button>
-    <button class="btn-primary" id="qz-next">بعدی</button>
-  </div>
 </div>
 
 <!-- Gym viewer -->
@@ -300,7 +267,7 @@
     <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 2.5h5M12 2.5V6"/></symbol>
     <symbol id="i-pomo" viewBox="0 0 24 24"><path d="M12 7c-4.4 0-7 2.9-7 6.3C5 17.2 8 20.5 12 20.5s7-3.3 7-7.2C19 9.9 16.4 7 12 7z"/><path d="M12 7c0-1.8.9-3.1 2.6-3.8M9 5.5c1.2.1 2.2.8 3 1.5"/></symbol>
     <symbol id="i-gym" viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3 9.5v5M21 9.5v5M6.5 12h11"/></symbol>
-    <symbol id="i-coach" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+    <symbol id="i-coach" viewBox="0 0 24 24"><path d="M12 3l2.4 5.2 5.6.6-4.2 3.8 1.2 5.6L12 15.4 7 18.2l1.2-5.6L4 8.8l5.6-.6z"/></symbol>
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5m6-6-6 6 6 6"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z"/></symbol>
@@ -311,5 +278,6 @@
 <script src="config.js"></script>
 <script src="quotes.js"></script>
 <script src="app.js"></script>
+<script src="coach.js"></script>
 </body>
 </html>

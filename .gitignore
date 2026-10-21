@@ -9,3 +9,6 @@ android/app/src/main/assets/capacitor.plugins.json
 android/local.properties
 .idea/
 *.iml
+
+worker/.wrangler/
+worker/node_modules/

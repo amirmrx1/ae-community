@@ -1,0 +1,8 @@
+{
+  "name": "ae-coach",
+  "main": "src/index.js",
+  "compatibility_date": "2026-10-20",
+  "workers_dev": true,
+  "ai": { "binding": "AI" },
+  "observability": { "enabled": true, "traces": { "enabled": true } }
+}

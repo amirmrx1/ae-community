@@ -1,3 +1,2 @@
-// Set `url` to your deployed Cloudflare Worker (e.g. https://ae-coach.<subdomain>.workers.dev).
-// `key` is optional: only needed if you set an APP_KEY secret on the Worker.
-window.AE_AI = { url: '', key: '' };
+// Filled in automatically by the GitHub build when the Cloudflare secrets are set.
+window.AE_CONFIG = { AI_URL: "", KEY: "" };
