@@ -89,6 +89,7 @@ function extractText(out) {
   return '';
 }
 const isLimit = (e) => /(limit|quota|4006|3040|capacity|too many)/i.test(String((e && e.message) || e));
+const isDailyQuota = (e) => /(4006|daily|allocation|quota)/i.test(String((e && e.message) || e));
 
 async function runAI(env, messages, maxTokens, temperature) {
   let last;
@@ -104,7 +105,8 @@ async function runAI(env, messages, maxTokens, temperature) {
       last = new Error('empty');
     } catch (e) {
       last = e;
-      if (isLimit(e)) throw e;
+      // Only the daily free allocation (4006) ends the attempt; a busy/out-of-capacity model (3040) falls through to the next model.
+      if (isDailyQuota(e)) throw e;
     }
   }
   throw last || new Error('ai');
