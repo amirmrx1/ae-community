@@ -274,9 +274,21 @@ body.pomo-break .ring-fg{stroke:#3ddc84;filter:drop-shadow(0 0 8px rgba(61,220,1
 #a-form .input{margin-bottom:10px;text-align:center}
 .a-err{min-height:20px;color:var(--red);font-size:13px;margin:2px 0 0;text-align:center}
 #a-form .q-go{margin-top:10px}
-#a-form.login #a-name,#a-form.login #a-phone{display:none}
+#a-form.login #a-name{display:none}
 .btn-ghost{display:block;width:100%;margin:22px 0 8px;background:transparent;border:1px solid var(--line);color:var(--mut);border-radius:14px;padding:12px;font:inherit;font-size:13px}
 
 .a-resend{display:block;margin:-2px auto 6px;background:transparent;border:0;color:var(--mut);font:inherit;font-size:13px;padding:6px}
 .a-resend:not(:disabled){color:#b58cff;text-decoration:underline}
-#a-form.otp #a-name,#a-form.otp #a-user,#a-form.otp #a-phone,#a-form.otp #a-pass{display:none}
+#a-form.otp #a-name,#a-form.otp #a-phone,#a-form.otp #a-pass{display:none}
+
+#tour{position:fixed;inset:0;z-index:120;background:rgba(6,4,14,.78);backdrop-filter:blur(3px);display:flex;align-items:flex-end;justify-content:center;padding:24px 18px calc(var(--sb) + 28px)}
+.tour-card{width:100%;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:24px 20px 18px;text-align:center;animation:fadeUp2 .4s ease both}
+.tour-ico{font-size:40px;line-height:1;margin-bottom:10px}
+.tour-card h3{margin:0 0 8px;font-size:19px;font-weight:800}
+.tour-card p{margin:0 0 16px;color:var(--mut);font-size:14px;line-height:1.9}
+.tour-dots{display:flex;gap:6px;justify-content:center;margin-bottom:16px}
+.tour-dots i{width:7px;height:7px;border-radius:50%;background:var(--line)}
+.tour-dots i.on{background:#8342eb;width:20px;border-radius:6px}
+.tour-btns{display:flex;gap:10px;align-items:center}
+.tour-btns .btn-primary{flex:1;margin:0}
+.tour-skip{background:transparent;border:0;color:var(--mut);font:inherit;font-size:13px;padding:10px 12px}

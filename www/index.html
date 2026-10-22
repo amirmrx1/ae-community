@@ -51,7 +51,6 @@
     </div>
     <form id="a-form" autocomplete="off" novalidate>
       <input class="input" id="a-name" placeholder="اسمت" maxlength="24" autocomplete="name">
-      <input class="input" id="a-user" dir="ltr" placeholder="نام کاربری (انگلیسی)" maxlength="20" autocapitalize="none" autocomplete="username">
       <input class="input" id="a-phone" dir="ltr" type="tel" inputmode="tel" placeholder="شماره تلفن (09xxxxxxxxx)" maxlength="16" autocomplete="tel">
       <input class="input" id="a-pass" dir="ltr" type="password" placeholder="رمز عبور (حداقل ۶ کاراکتر)" maxlength="100" autocomplete="current-password">
       <input class="input" id="a-otp" dir="ltr" inputmode="numeric" placeholder="کد پیامک‌شده" maxlength="8" autocomplete="one-time-code" style="display:none">
@@ -59,6 +58,20 @@
       <div class="a-err" id="a-err"></div>
       <button class="btn-primary q-go" id="a-go" type="submit">ثبت‌نام</button>
     </form>
+  </div>
+</div>
+
+<!-- Guided tour -->
+<div id="tour" class="hidden">
+  <div class="tour-card">
+    <div class="tour-ico" id="tour-ico"></div>
+    <h3 id="tour-title"></h3>
+    <p id="tour-text"></p>
+    <div class="tour-dots" id="tour-dots"></div>
+    <div class="tour-btns">
+      <button type="button" class="tour-skip" id="tour-skip">رد کردن</button>
+      <button type="button" class="btn-primary" id="tour-next">بعدی</button>
+    </div>
   </div>
 </div>
 
@@ -118,7 +131,8 @@
           <div class="t-title">تایمر</div><div class="t-sub">شمارش معکوس</div>
         </div>
       </div>
-          <button class="btn-ghost" id="logout-btn" type="button">خروج از حساب <span id="logout-user" dir="ltr"></span></button>
+          <button class="btn-ghost" id="tour-btn" type="button">راهنمای قدم‌به‌قدم اپ</button>
+      <button class="btn-ghost" id="logout-btn" type="button" style="margin-top:0">خروج از حساب <span id="logout-user" dir="ltr"></span></button>
     </section>
 
     <!-- Notes -->

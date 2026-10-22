@@ -319,8 +319,7 @@ async function otpCheck(env, phone, codeIn) {
   await env.DB.prepare('DELETE FROM otp WHERE phone=?').bind(phone).run();
 }
 async function register(env, b) {
-  const username = cleanUser(b.username), name = String(b.name || '').trim().slice(0, 24), phone = cleanPhone(b.phone), pw = String(b.password || '');
-  if (!/^[a-z0-9_.]{3,20}$/.test(username)) throw bad('username');
+  const name = String(b.name || '').trim().slice(0, 24), phone = cleanPhone(b.phone), pw = String(b.password || ''), username = phone; // no separate username: the phone number is the login id
   if (!name) throw bad('name');
   if (!phone) throw bad('phone');
   if (pw.length < 6 || pw.length > 100) throw bad('password');
@@ -330,15 +329,15 @@ async function register(env, b) {
   try {
     const r = await env.DB.prepare('INSERT INTO users (username,name,phone,pw_hash,salt,created_at) VALUES (?,?,?,?,?,?)').bind(username, name, phone, h, hex(salt), Date.now()).run();
     const id = r.meta.last_row_id;
-    return { token: await newSession(env, id), user: { username, name, phone } };
+    return { token: await newSession(env, id), user: { name, phone } };
   } catch (e) {
-    if (/UNIQUE/i.test(String(e && e.message))) throw bad(/phone/i.test(String(e.message)) ? 'phone_taken' : 'username_taken');
+    if (/UNIQUE/i.test(String(e && e.message))) throw bad('phone_taken');
     throw e;
   }
 }
 async function login(env, b) {
-  const username = cleanUser(b.username), pw = String(b.password || '');
-  const u = await env.DB.prepare('SELECT * FROM users WHERE username=?').bind(username).first();
+  const phone = cleanPhone(b.phone), pw = String(b.password || '');
+  const u = phone ? await env.DB.prepare('SELECT * FROM users WHERE phone=?').bind(phone).first() : null;
   if (!u) { await hashPw(pw, new Uint8Array(16)); throw bad('credentials'); }
   if (u.locked_until > Date.now()) throw bad('locked');
   const ok = (await hashPw(pw, unhex(u.salt))) === u.pw_hash;
@@ -348,12 +347,12 @@ async function login(env, b) {
     throw bad(fails >= 5 ? 'locked' : 'credentials');
   }
   await env.DB.prepare('UPDATE users SET fails=0, locked_until=0 WHERE id=?').bind(u.id).run();
-  return { token: await newSession(env, u.id), user: { username: u.username, name: u.name, phone: u.phone } };
+  return { token: await newSession(env, u.id), user: { name: u.name, phone: u.phone } };
 }
 async function me(env, b) {
   const t = String(b.token || '');
   if (!/^[0-9a-f]{64}$/.test(t)) throw bad('session');
-  const u = await env.DB.prepare('SELECT u.username,u.name,u.phone FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?').bind(await sha(t), Date.now()).first();
+  const u = await env.DB.prepare('SELECT u.name,u.phone FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?').bind(await sha(t), Date.now()).first();
   if (!u) throw bad('session');
   return { user: u };
 }

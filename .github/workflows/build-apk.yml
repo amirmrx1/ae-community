@@ -72,14 +72,14 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
-      - name: Build debug APK
+      - name: Build release APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleRelease --no-daemon
 
       - name: Rename APK
-        run: cp android/app/build/outputs/apk/debug/app-debug.apk AE.apk
+        run: cp android/app/build/outputs/apk/release/app-release.apk AE.apk
 
       - uses: actions/upload-artifact@v4
         with:

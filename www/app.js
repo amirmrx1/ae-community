@@ -513,9 +513,9 @@
       .catch(function (e) { clearTimeout(t); if (e && e.name === 'AbortError') throw { code: 'timeout' }; if (e && e.code) throw e; throw { code: 'network' }; });
   }
   var AERR = {
-    username: 'نام کاربری باید ۳ تا ۲۰ حرف انگلیسی/عدد/_ باشه', name: 'اسمت رو بنویس', phone: 'شماره تلفن درست نیست (مثل 09123456789)',
-    password: 'رمز باید حداقل ۶ کاراکتر باشه', username_taken: 'این نام کاربری قبلاً گرفته شده', phone_taken: 'این شماره قبلاً ثبت شده',
-    credentials: 'نام کاربری یا رمز اشتباهه', locked: 'چند بار اشتباه زدی؛ ۱۰ دقیقه صبر کن', no_db: 'سرور هنوز آماده‌ی ثبت‌نام نیست',
+    name: 'اسمت رو بنویس', phone: 'شماره تلفن درست نیست (مثل 09123456789)',
+    password: 'رمز باید حداقل ۶ کاراکتر باشه', phone_taken: 'این شماره قبلاً ثبت شده',
+    credentials: 'شماره یا رمز اشتباهه', locked: 'چند بار اشتباه زدی؛ ۱۰ دقیقه صبر کن', no_db: 'سرور هنوز آماده‌ی ثبت‌نام نیست',
     offline: 'اینترنت وصل نیست', otp_wrong: 'کد اشتباهه', otp_expired: 'کد منقضی شده؛ دوباره کد بگیر', otp_locked: 'چند بار اشتباه زدی؛ کد جدید بگیر', too_soon: 'یه کم صبر کن و دوباره امتحان کن', too_many: 'تعداد درخواست کد زیاد شد؛ بعداً امتحان کن', sms_failed: 'پیامک ارسال نشد؛ چند دقیقه بعد دوباره امتحان کن', network: 'به سرور وصل نشد', timeout: 'سرور دیر جواب داد، دوباره امتحان کن', nourl: 'آدرس سرور تنظیم نشده'
   };
   var authMode = 'register';
@@ -531,14 +531,16 @@
   function showAuth() {
     $('#welcome').classList.remove('hidden');
     setMode(S.named ? 'login' : 'register');
-    setTimeout(function () { $((authMode === 'login') ? '#a-user' : '#a-name').focus(); }, 600);
+    setTimeout(function () { $((authMode === 'login') ? '#a-phone' : '#a-name').focus(); }, 600);
   }
   function onAuthed(r) {
-    S.auth = { token: r.token, username: r.user.username, phone: r.user.phone };
+    var fresh = authMode === 'register';
+    S.auth = { token: r.token, phone: r.user.phone };
     if (r.user.name) { S.name = r.user.name; S.named = true; }
     save();
     var w = $('#welcome'); w.classList.add('out'); setTimeout(function () { w.classList.add('hidden'); w.classList.remove('out'); }, 450);
     $('#a-pass').value = ''; document.activeElement && document.activeElement.blur();
+    if (fresh) { S.toured = false; save(); }
     renderHome(); showQuote();
   }
   $$('#a-tabs button').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.m); }); });
@@ -566,17 +568,17 @@
   });
   $('#a-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    var body = { username: $('#a-user').value.trim(), password: $('#a-pass').value };
-    if (authMode === 'register') { body.name = $('#a-name').value.trim(); body.phone = $('#a-phone').value.trim(); }
+    var body = { phone: $('#a-phone').value.trim(), password: $('#a-pass').value };
+    if (authMode === 'register') body.name = $('#a-name').value.trim();
     var err = $('#a-err'), go = $('#a-go');
     err.textContent = '';
     if (authMode === 'register' && !body.name) { err.textContent = AERR.name; return; }
-    if (!body.username || !body.password) { err.textContent = AERR[!body.username ? 'username' : 'password']; return; }
+    if (!body.phone) { err.textContent = AERR.phone; return; }
+    if (!body.password) { err.textContent = AERR.password; return; }
     var p;
     if (authMode === 'login') p = authApi('/login', body).then(onAuthed);
     else if (otpStage) { body.otp = $('#a-otp').value.trim(); if (!body.otp) { err.textContent = AERR.otp_wrong; return; } p = authApi('/register', body).then(onAuthed); }
     else {
-      if (!/^[a-zA-Z0-9_.]{3,20}$/.test(body.username)) { err.textContent = AERR.username; return; }
       if (body.password.length < 6) { err.textContent = AERR.password; return; }
       p = sendOtp(body);
     }
@@ -584,12 +586,39 @@
     p.catch(function (x) {
       err.textContent = AERR[x.code] || 'یه مشکلی پیش اومد، دوباره امتحان کن';
       if (x.code === 'otp_expired' || x.code === 'otp_locked') { /* user can tap resend */ }
-      if (x.code === 'username_taken' || x.code === 'phone_taken' || x.code === 'username' || x.code === 'phone') setOtpStage(false);
+      if (x.code === 'phone_taken' || x.code === 'phone') setOtpStage(false);
     }).then(function () { go.disabled = false; go.style.opacity = ''; });
   });
+
+  /* ---------- guided tour (first time) ---------- */
+  var TOUR = [
+    { ico: '👋', go: 'home', t: 'خوش اومدی به AE', x: 'AE دستیار شخصی خودته؛ نوشتن یادداشت، مدیریت کارها، تمرکز و یه مربی هوشمند، همه تو یه اپ. بیا ۱ دقیقه‌ای ببینیم هر بخش چیکار می‌کنه.' },
+    { ico: '🏠', go: 'home', t: 'داشبورد', x: 'صفحه‌ی اصلیت. هر بار که وارد اپ بشی یه جمله‌ی انگیزشی از دیوید گاگینز می‌بینی و پایینش خلاصه‌ی تسک‌ها و میانبر به بقیه بخش‌هاست. بالای صفحه هم با اسم خودت بهت سلام می‌ده.' },
+    { ico: '🧠', go: 'coach', t: 'مربی هوشمند', x: 'اول یه آزمون کوتاه می‌دی تا هدفت مشخص بشه، بعد برات نقشه‌ی راه و قدم‌های روزانه می‌چینه. هر سؤالی هم داشتی ازش بپرس. دو تا ذهنیت داره: «استمرار و رشد» (سبک گاگینز) و «پول و بیزینس».' },
+    { ico: '📝', go: 'notes', t: 'یادداشت', x: 'هر ایده یا متنی که خواستی بنویس و ذخیره کن. با دکمه‌ی + یادداشت جدید می‌سازی و هر وقت خواستی برمی‌گردی و ویرایشش می‌کنی.' },
+    { ico: '✅', go: 'tasks', t: 'تسک', x: 'کارهای امروزت رو اینجا بنویس و وقتی انجام شد تیکش بزن. نوار پیشرفتش تو داشبورد هم دیده می‌شه.' },
+    { ico: '💪', go: 'gym', t: 'باشگاه', x: 'عکس برنامه‌ی تمرینیت رو آپلود کن تا همیشه همین‌جا بمونه و هر روز که سر زدی راحت ببینیش.' },
+    { ico: '⏱️', go: 'timer', t: 'تایمر و پومودورو', x: 'تایمر برای هر کاری که زمان‌بندی می‌خواد. پومودورو هم کارت رو به دوره‌های تمرکز ۲۵ دقیقه‌ای و استراحت کوتاه تقسیم می‌کنه تا بیشتر کار کنی و خسته نشی.' },
+    { ico: '🚀', go: 'home', t: 'همین! شروع کن', x: 'هر وقت خواستی دوباره این راهنما رو ببینی، پایین صفحه‌ی داشبورد دکمه‌ی «راهنمای قدم‌به‌قدم اپ» هست. Stay hard 💪' }
+  ];
+  var tourI = 0;
+  function renderTour() {
+    var st = TOUR[tourI];
+    $('#tour-ico').textContent = st.ico; $('#tour-title').textContent = st.t; $('#tour-text').textContent = st.x;
+    $('#tour-dots').innerHTML = TOUR.map(function (_, i) { return '<i' + (i === tourI ? ' class="on"' : '') + '></i>'; }).join('');
+    $('#tour-next').textContent = tourI === TOUR.length - 1 ? 'بزن بریم' : 'بعدی';
+    $('#tour-skip').style.visibility = tourI === TOUR.length - 1 ? 'hidden' : '';
+    go(st.go);
+  }
+  function startTour() { tourI = 0; $('#tour').classList.remove('hidden'); renderTour(); }
+  function endTour() { $('#tour').classList.add('hidden'); S.toured = true; save(); go('home'); }
+  $('#tour-next').addEventListener('click', function () { if (tourI >= TOUR.length - 1) endTour(); else { tourI++; renderTour(); } });
+  $('#tour-skip').addEventListener('click', endTour);
+  $('#tour-btn').addEventListener('click', startTour);
+
   function showQuote() {
     renderHome();
-    $('#logout-user').textContent = S.auth ? '(' + S.auth.username + ')' : '';
+    $('#logout-user').textContent = S.auth && S.auth.phone ? '(' + S.auth.phone + ')' : '';
     var q = $('#quote-screen'); if (q) q.classList.remove('hidden');
   }
   $('#logout-btn').addEventListener('click', function () {
@@ -615,5 +644,6 @@
   }, SPLASH_MS);
   $('#q-go').addEventListener('click', function () {
     var qs = $('#quote-screen'); qs.classList.add('out'); setTimeout(function () { qs.remove(); }, 450);
+    if (S.auth && S.toured === false) setTimeout(startTour, 500);
   });
 })();
