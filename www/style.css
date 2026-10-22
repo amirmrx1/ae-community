@@ -264,3 +264,5 @@ body.pomo-break .ring-fg{stroke:#3ddc84;filter:drop-shadow(0 0 8px rgba(61,220,1
 
 /* chat: content box ends right above the tab bar so the sticky composer never overlaps messages */
 #v-coach.chat-on{padding-bottom:calc(var(--sb) + 78px)}
+
+#coach-root .card + .card{margin-top:12px}

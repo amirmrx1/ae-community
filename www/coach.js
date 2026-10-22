@@ -39,7 +39,7 @@
     return fetch(u + path, {
       method: 'POST', signal: ctl.signal,
       headers: { 'Content-Type': 'application/json', 'x-ae-key': CFG.KEY || '' },
-      body: JSON.stringify(body)
+      body: JSON.stringify(C().model ? Object.assign({}, body, { model: C().model }) : body)
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
         if (!r.ok) throw { code: j.error || ('http' + r.status) };
@@ -92,6 +92,7 @@
   }
   function chatCtx() {
     var c = C(), o = { clock: new Date().toTimeString().slice(0, 5) };
+    try { o.tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* default tz on the server */ }
     if (c.plan) { o.vision = c.plan.vision; o.weekFocus = weekFocus(); }
     var i = dayIdx(), d = c.dmap[i];
     if (d) { o.dayNumber = i + 1; o.today = d.steps.map(function (s, k) { return { t: s.t, done: isDone(i, k) }; }); }
@@ -397,9 +398,21 @@
         } })
       ])
     ]));
+    var sel = h('select', { class: 'input' }, [
+      h('option', { value: '', text: 'خودکار (Gemma — سریع و کم‌مصرف)' }),
+      h('option', { value: 'llama', text: 'Llama 70B — قوی‌تر، سهمیه‌ی بیشتری مصرف می‌کنه' }),
+      h('option', { value: 'glm', text: 'GLM Flash' })
+    ]);
+    sel.value = c.model || '';
+    sel.addEventListener('change', function () { c.model = sel.value; A.save(); A.toast(c.model ? 'مدل عوض شد' : 'مدل خودکار شد'); });
+    box.appendChild(h('div', { class: 'card' }, [
+      h('div', { class: 'co-qt', text: 'مدل هوش مصنوعی' }),
+      h('p', { class: 'co-p', text: 'اگه جواب‌ها ضعیف بود مدل رو عوض کن و دوباره امتحان کن. اگه مدل انتخابی خطا بده، خودکار می‌ره سراغ بعدی.' }),
+      sel
+    ]));
     box.appendChild(h('button', { class: 'btn-ghost co-wide co-danger', text: 'پاک کردن همه‌ی اطلاعات مربی (پرونده، نقشه، چت)', onclick: function () {
       if (!confirm('همه‌ی اطلاعات مربی پاک بشه؟ یادداشت‌ها و تسک‌هات سر جاشون می‌مونن.')) return;
-      var url = c.url; S.coach = { url: url }; chatErr = null; draft = ''; A.save(); render(); A.toast('پاک شد');
+      var url = c.url, mdl = c.model; S.coach = { url: url, model: mdl }; chatErr = null; draft = ''; A.save(); render(); A.toast('پاک شد');
     } }));
     return box;
   }

@@ -2,19 +2,27 @@
 // Routes (POST, JSON): /chat  /plan  /days      GET /  -> health
 
 const MODELS = [
-  { id: '@cf/google/gemma-4-26b-a4b-it', lenParam: 'max_completion_tokens' },
-  { id: '@cf/zai-org/glm-4.7-flash', lenParam: 'max_tokens' },
+  { key: 'gemma', id: '@cf/google/gemma-4-26b-a4b-it', lenParam: 'max_completion_tokens', think: true },
+  { key: 'llama', id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', lenParam: 'max_tokens', think: false },
+  { key: 'glm', id: '@cf/zai-org/glm-4.7-flash', lenParam: 'max_tokens', think: true },
 ];
 const ORIGINS = new Set(['https://localhost', 'http://localhost', 'capacitor://localhost', 'ionic://localhost']);
 const MAX_BODY = 60000;
 
 /* ---------------- persona prompts ---------------- */
 const BASE = `You are "AE Coach", a personal-development coach inside the AE app.
-LANGUAGE: Always answer in natural, casual spoken Persian (Farsi, محاوره‌ای), written in Persian script, like a straight-talking friend. Short sentences. Use English only for the phrase "Stay hard" or if the user writes in English.
-STYLE: Keep replies under about 180 words unless the user asks for detail. No markdown headings. Short lines are fine. When it helps, end with ONE concrete action to do today.
-You can answer ANY question the user asks (business, skills, habits, health basics, study, general knowledge), always in your persona's voice, and be accurate and practical first, motivational second. If you are not sure about a fact, say so.
+LANGUAGE: Always answer in natural, casual spoken Persian (Farsi, محاوره‌ای), written in Persian script, like a straight-talking friend. Use English only for the phrase "Stay hard" or if the user writes in English.
+FACTS: Only state what you actually know. Never invent facts, numbers, names, prices, laws, sources or quotes. If you are not sure, or the answer needs live data (prices, news, results), say so in a few words ("مطمئن نیستم") and give the best practical advice you can instead. The exact current date and time are given under CURRENT TIME at the end of this prompt: for any question about today, the weekday, the date or the time, use ONLY that and never guess.
+You can answer ANY question the user asks (business, skills, habits, health basics, study, general knowledge), always in your persona's voice, accurate and practical first, motivational second.
 SAFETY: If the user shows signs of despair, self-harm, abuse, an eating disorder, or a medical emergency, drop the tough tone completely, be calm and warm, take it seriously, and encourage them to reach a trusted person, a professional, or emergency services. Never give dangerous physical advice: build up gradually and see a doctor for pain, injury or medical conditions.
 You are an AI in the spirit of the persona below. Never claim to be the real person, never invent quotes or personal stories of real people.`;
+
+const CHAT_STYLE = `LENGTH (strict): reply in 2 to 4 short sentences, about 30 to 70 words in total. No headings, no bullet lists, no emojis, no long explanations, no multiple options. Give your single best answer, then ONE concrete action for today or ONE sharp question. Only when the user explicitly asks for details, a plan, steps or a list may you go longer (up to about 150 words).
+Style examples (tone and length only, do not copy them):
+User: امروز حس هیچ کاری ندارم.
+Coach: حسش رو ولش کن، حس قرار نیست کار کنه. فقط ۱۰ دقیقه اولین کار لیستت رو شروع کن. بعد ۱۰ دقیقه ببین هنوز می‌خوای ولش کنی یا نه.
+User: قیمت دلار الان چنده؟
+Coach: قیمت لحظه‌ای رو ندارم و حدس هم نمی‌زنم. از یه منبع معتبر نگاه کن. بگو برای چه تصمیمی می‌خوای؟ بر اساس اون کمکت می‌کنم.`;
 
 const PERSONAS = {
   goggins: `PERSONA "Stay Hard" (inspired by the no-excuses, extreme-discipline mindset of David Goggins): intense, raw, direct. Tough love: attack the excuse, never the person's worth. Push them to do the uncomfortable thing today, to callous the mind, to win the boring hours nobody sees. Consistency, discipline, accountability and mental toughness are your themes. Use "Stay hard" rarely and only when it lands.`,
@@ -78,6 +86,23 @@ function profileText(p) {
   ].join('\n');
 }
 
+// Exact date/time from the server clock in the user's timezone, so the model never has to guess the weekday.
+function nowInfo(tzIn) {
+  let tz = 'Asia/Tehran';
+  try { if (tzIn) { new Intl.DateTimeFormat('en', { timeZone: String(tzIn) }); tz = String(tzIn); } } catch (_) { /* keep default */ }
+  const d = new Date();
+  const f = (loc, o) => new Intl.DateTimeFormat(loc, { timeZone: tz, ...o }).format(d);
+  return `${f('fa-IR', { weekday: 'long' })} (${f('en-US', { weekday: 'long' })}), ${f('fa-IR-u-ca-persian', { day: 'numeric', month: 'long', year: 'numeric' })} (Gregorian ${f('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit' })}), ساعت ${f('fa-IR', { hour: '2-digit', minute: '2-digit', hour12: false })}, timezone ${tz}`;
+}
+const wantsDetail = (t) => /(مفصل|با جزئیات|کامل‌تر|کاملتر|توضیح بیشتر|توضیح بده|لیست|مرحله ?به ?مرحله|برنامه (بده|بریز|بنویس)|detail|step by step|plan)/i.test(String(t || ''));
+// If the reply was cut by the token limit, end it at the last full sentence instead of mid-word.
+function tidy(t) {
+  t = String(t || '').trim();
+  if (/[.!?؟…:)»"]$/.test(t)) return t;
+  const i = Math.max(t.lastIndexOf('. '), t.lastIndexOf('؟'), t.lastIndexOf('!'), t.lastIndexOf('.\n'), t.lastIndexOf('؛'));
+  return i > t.length * 0.4 ? t.slice(0, i + 1).trim() : t;
+}
+
 function extractText(out) {
   if (!out) return '';
   if (typeof out === 'string') return out.trim();
@@ -91,15 +116,15 @@ function extractText(out) {
 const isLimit = (e) => /(limit|quota|4006|3040|capacity|too many)/i.test(String((e && e.message) || e));
 const isDailyQuota = (e) => /(4006|daily|allocation|quota)/i.test(String((e && e.message) || e));
 
-async function runAI(env, messages, maxTokens, temperature) {
+const orderFor = (pref) => { const p = MODELS.find((m) => m.key === pref); return p ? [p, ...MODELS.filter((m) => m !== p)] : MODELS; };
+async function runAI(env, messages, maxTokens, temperature, pref) {
   let last;
-  for (const m of MODELS) {
+  for (const m of orderFor(pref)) {
     try {
       // enable_thinking:false -> no hidden reasoning tokens (faster, cheaper, fits the free daily quota)
-      const out = await env.AI.run(m.id, {
-        messages, [m.lenParam]: maxTokens, temperature: temperature ?? 0.7,
-        chat_template_kwargs: { enable_thinking: false },
-      });
+      const input = { messages, [m.lenParam]: maxTokens, temperature: temperature ?? 0.7 };
+      if (m.think) input.chat_template_kwargs = { enable_thinking: false };
+      const out = await env.AI.run(m.id, input);
       const text = extractText(out).replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
       if (text) return text;
       last = new Error('empty');
@@ -122,11 +147,11 @@ function parseJSON(text) {
     return JSON.parse(t.replace(/,\s*([}\]])/g, '$1'));
   }
 }
-async function runJSON(env, system, user, maxTokens, normalize) {
+async function runJSON(env, system, user, maxTokens, normalize, pref) {
   let hint = '';
   for (let i = 0; i < 2; i++) {
     try {
-      const text = await runAI(env, [{ role: 'system', content: system }, { role: 'user', content: user + hint }], maxTokens, 0.6);
+      const text = await runAI(env, [{ role: 'system', content: system }, { role: 'user', content: user + hint }], maxTokens, 0.6, pref);
       return normalize(parseJSON(text));
     } catch (e) {
       if (isLimit(e)) throw e;
@@ -153,10 +178,11 @@ async function chat(env, body) {
     ctx += `\nToday's planned steps (day ${Number(c.dayNumber) || '?'}): ` +
       c.today.slice(0, 8).map((s) => `${s && s.done ? '[done]' : '[not done]'} ${str(s && s.t, 120)}`).join(' | ');
   }
-  if (c.clock) ctx += `\nUser's local time: ${str(c.clock, 40)}`;
-  const system = `${BASE}\n\n${PERSONAS[persona]}${ctx}`;
-  const reply = await runAI(env, [{ role: 'system', content: system }, ...msgs], 700, 0.8);
-  return { reply: reply.slice(0, 4000) };
+  ctx += `\n\nCURRENT TIME (authoritative): ${nowInfo(c.tz)}`;
+  const system = `${BASE}\n\n${CHAT_STYLE}\n\n${PERSONAS[persona]}${ctx}`;
+  const long = wantsDetail(msgs[msgs.length - 1].content);
+  const reply = await runAI(env, [{ role: 'system', content: system }, ...msgs], long ? 700 : 300, 0.6, body.model);
+  return { reply: tidy(reply).slice(0, 4000) };
 }
 
 /* ---------------- plan ---------------- */
@@ -183,7 +209,7 @@ Return ONLY valid JSON (no markdown, no comments) in exactly this shape:
 "weeks":[{"n":1,"focus":"main focus of the week","deliverable":"what is finished by the end of the week"}],
 "rules":["3 to 5 daily non-negotiable habits"]}
 Give 3 months and 12 weeks (week n=1..12). Every text value must be in casual Persian.`;
-  return runJSON(env, system, user, 3500, normalizePlan);
+  return runJSON(env, system, user, 3500, normalizePlan, body.model);
 }
 
 /* ---------------- days ---------------- */
@@ -218,7 +244,7 @@ Rules: 3 to 5 concrete steps per day, each starts with a verb and is small enoug
 Return ONLY valid JSON (no markdown) in exactly this shape:
 {"days":[{"theme":"short theme of the day","steps":[{"t":"the step","min":30}]}]}
 All text must be casual Persian.`;
-  return { days: await runJSON(env, system, user, 3500, normalizeDays(from, budget)) };
+  return { days: await runJSON(env, system, user, 3500, normalizeDays(from, budget), body.model) };
 }
 
 /* ---------------- entry ---------------- */
