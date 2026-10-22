@@ -266,3 +266,13 @@ body.pomo-break .ring-fg{stroke:#3ddc84;filter:drop-shadow(0 0 8px rgba(61,220,1
 #v-coach.chat-on{padding-bottom:calc(var(--sb) + 78px)}
 
 #coach-root .card + .card{margin-top:12px}
+
+.auth-box{width:100%;max-width:360px}
+.seg{display:flex;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px;margin:0 0 14px}
+.seg button{flex:1;background:transparent;border:0;color:var(--mut);font:inherit;font-size:14px;padding:9px;border-radius:10px}
+.seg button.on{background:rgba(131,66,235,.25);color:var(--text);font-weight:700}
+#a-form .input{margin-bottom:10px;text-align:center}
+.a-err{min-height:20px;color:var(--red);font-size:13px;margin:2px 0 0;text-align:center}
+#a-form .q-go{margin-top:10px}
+#a-form.login #a-name,#a-form.login #a-phone{display:none}
+.btn-ghost{display:block;width:100%;margin:22px 0 8px;background:transparent;border:1px solid var(--line);color:var(--mut);border-radius:14px;padding:12px;font:inherit;font-size:13px}

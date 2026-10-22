@@ -1,5 +1,5 @@
 // AE Coach — Cloudflare Worker using Workers AI (free tier: 10,000 Neurons/day).
-// Routes (POST, JSON): /chat  /plan  /days      GET /  -> health
+// Routes (POST, JSON): /chat  /plan  /days  /register  /login  /me  /logout (needs D1 binding DB)      GET /  -> health
 
 const MODELS = [
   { key: 'gemma', id: '@cf/google/gemma-4-26b-a4b-it', lenParam: 'max_completion_tokens', think: true },
@@ -247,6 +247,73 @@ All text must be casual Persian.`;
   return { days: await runJSON(env, system, user, 3500, normalizeDays(from, budget), body.model) };
 }
 
+/* ---------------- accounts (D1: users, sessions) ---------------- */
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+const unhex = (h) => new Uint8Array(h.match(/../g).map((x) => parseInt(x, 16)));
+const faDigits = (t) => String(t || '').replace(/[۰-۹]/g, (d) => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)).replace(/[٠-٩]/g, (d) => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+async function hashPw(pw, saltBytes) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']);
+  return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: saltBytes, iterations: 100000 }, key, 256));
+}
+const sha = async (t) => hex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)));
+const bad = (code) => { const e = new Error(code); e.code = 'auth_' + code; return e; };
+function cleanPhone(p) {
+  let t = faDigits(p).replace(/[\s\-()]/g, '');
+  if (t.startsWith('+98')) t = '0' + t.slice(3); else if (t.startsWith('0098')) t = '0' + t.slice(4); else if (/^9\d{9}$/.test(t)) t = '0' + t;
+  return /^09\d{9}$/.test(t) ? t : '';
+}
+const cleanUser = (u) => String(u || '').trim().toLowerCase();
+async function newSession(env, userId) {
+  const token = hex(crypto.getRandomValues(new Uint8Array(32)));
+  const exp = Date.now() + 90 * 86400000;
+  await env.DB.prepare('INSERT INTO sessions (token_hash,user_id,expires_at) VALUES (?,?,?)').bind(await sha(token), userId, exp).run();
+  await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(Date.now()).run();
+  return token;
+}
+async function register(env, b) {
+  const username = cleanUser(b.username), name = String(b.name || '').trim().slice(0, 24), phone = cleanPhone(b.phone), pw = String(b.password || '');
+  if (!/^[a-z0-9_.]{3,20}$/.test(username)) throw bad('username');
+  if (!name) throw bad('name');
+  if (!phone) throw bad('phone');
+  if (pw.length < 6 || pw.length > 100) throw bad('password');
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const h = await hashPw(pw, salt);
+  try {
+    const r = await env.DB.prepare('INSERT INTO users (username,name,phone,pw_hash,salt,created_at) VALUES (?,?,?,?,?,?)').bind(username, name, phone, h, hex(salt), Date.now()).run();
+    const id = r.meta.last_row_id;
+    return { token: await newSession(env, id), user: { username, name, phone } };
+  } catch (e) {
+    if (/UNIQUE/i.test(String(e && e.message))) throw bad(/phone/i.test(String(e.message)) ? 'phone_taken' : 'username_taken');
+    throw e;
+  }
+}
+async function login(env, b) {
+  const username = cleanUser(b.username), pw = String(b.password || '');
+  const u = await env.DB.prepare('SELECT * FROM users WHERE username=?').bind(username).first();
+  if (!u) { await hashPw(pw, new Uint8Array(16)); throw bad('credentials'); }
+  if (u.locked_until > Date.now()) throw bad('locked');
+  const ok = (await hashPw(pw, unhex(u.salt))) === u.pw_hash;
+  if (!ok) {
+    const fails = u.fails + 1;
+    await env.DB.prepare('UPDATE users SET fails=?, locked_until=? WHERE id=?').bind(fails >= 5 ? 0 : fails, fails >= 5 ? Date.now() + 10 * 60000 : 0, u.id).run();
+    throw bad(fails >= 5 ? 'locked' : 'credentials');
+  }
+  await env.DB.prepare('UPDATE users SET fails=0, locked_until=0 WHERE id=?').bind(u.id).run();
+  return { token: await newSession(env, u.id), user: { username: u.username, name: u.name, phone: u.phone } };
+}
+async function me(env, b) {
+  const t = String(b.token || '');
+  if (!/^[0-9a-f]{64}$/.test(t)) throw bad('session');
+  const u = await env.DB.prepare('SELECT u.username,u.name,u.phone FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=? AND s.expires_at>?').bind(await sha(t), Date.now()).first();
+  if (!u) throw bad('session');
+  return { user: u };
+}
+async function logout(env, b) {
+  const t = String(b.token || '');
+  if (/^[0-9a-f]{64}$/.test(t)) await env.DB.prepare('DELETE FROM sessions WHERE token_hash=?').bind(await sha(t)).run();
+  return { ok: true };
+}
+
 /* ---------------- entry ---------------- */
 export default {
   async fetch(request, env) {
@@ -269,12 +336,18 @@ export default {
     if (!body || typeof body !== 'object') return json({ error: 'json' }, 400, cx);
 
     try {
+      if (['/register', '/login', '/me', '/logout'].includes(url.pathname)) {
+        if (!env.DB) return json({ error: 'no_db' }, 503, cx);
+        const fn = { '/register': register, '/login': login, '/me': me, '/logout': logout }[url.pathname];
+        return json(await fn(env, body), 200, cx);
+      }
       if (url.pathname === '/chat') return json(await chat(env, body), 200, cx);
       if (url.pathname === '/plan') return json({ plan: await plan(env, body) }, 200, cx);
       if (url.pathname === '/days') return json(await days(env, body), 200, cx);
       return json({ error: 'not_found' }, 404, cx);
     } catch (e) {
       console.error(JSON.stringify({ route: url.pathname, error: String((e && e.message) || e).slice(0, 200) }));
+      if (e && String(e.code || '').startsWith('auth_')) return json({ error: e.code.slice(5) }, e.code === 'auth_session' || e.code === 'auth_credentials' ? 401 : e.code === 'auth_locked' ? 429 : 400, cx);
       if (e && e.code === 'bad_input') return json({ error: 'bad_input' }, 400, cx);
       if (isLimit(e)) return json({ error: 'limit' }, 429, cx);
       return json({ error: 'ai' }, 502, cx);

@@ -4,5 +4,6 @@
   "compatibility_date": "2026-10-20",
   "workers_dev": true,
   "ai": { "binding": "AI" },
+  "d1_databases": [{ "binding": "DB", "database_name": "ae-users", "database_id": "1548eb25-9f86-4677-a9e2-99036c3af505" }],
   "observability": { "enabled": true, "traces": { "enabled": true } }
 }

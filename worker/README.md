@@ -26,3 +26,7 @@
 - کلید `APP_KEY` اختیاریه؛ توی APK قرار می‌گیره، پس فقط جلوی استفاده‌ی اتفاقی رو می‌گیره، نه یه قفل واقعی.
 - سهمیه‌ی رایگان ساعت ۰۰:۰۰ UTC (۳:۳۰ بامداد ایران) ریست می‌شه. بعد از تموم شدن، اپ پیام مناسب نشون می‌ده.
 - مدل‌ها: `@cf/google/gemma-4-26b-a4b-it` و در صورت خطا `@cf/zai-org/glm-4.7-flash` (هر دو توی پلن رایگان).
+
+## Accounts (register / login)
+Needs a D1 database bound as `DB` (database `ae-users`, tables `users` + `sessions`; schema in `worker/schema.sql`).
+Passwords are stored only as salted PBKDF2-SHA256 hashes; sessions are random tokens (stored hashed, 90 days).

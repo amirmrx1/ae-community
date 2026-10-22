@@ -38,15 +38,25 @@
   </div>
 </div>
 
-<!-- Welcome / first-run name -->
+<!-- Auth: sign up / log in -->
 <div id="welcome" class="hidden">
   <div class="q-glow"></div>
-  <div class="q-inner">
+  <div class="q-inner auth-box">
     <img class="q-logo" src="assets/logo.png" alt="AE">
-    <h2 class="w-title">خوش اومدی 👋</h2>
-    <p class="w-sub">قبل از شروع، اسمت چیه؟</p>
-    <input class="input w-input" id="w-name" placeholder="اسمت رو بنویس…" maxlength="24" autocomplete="off">
-    <button class="btn-primary q-go" id="w-go">ادامه</button>
+    <h2 class="w-title" id="a-title">خوش اومدی 👋</h2>
+    <p class="w-sub" id="a-sub">برای شروع یه حساب بساز</p>
+    <div class="seg" id="a-tabs">
+      <button type="button" data-m="register" class="on">ثبت‌نام</button>
+      <button type="button" data-m="login">ورود</button>
+    </div>
+    <form id="a-form" autocomplete="off" novalidate>
+      <input class="input" id="a-name" placeholder="اسمت" maxlength="24" autocomplete="name">
+      <input class="input" id="a-user" dir="ltr" placeholder="نام کاربری (انگلیسی)" maxlength="20" autocapitalize="none" autocomplete="username">
+      <input class="input" id="a-phone" dir="ltr" type="tel" inputmode="tel" placeholder="شماره تلفن (09xxxxxxxxx)" maxlength="16" autocomplete="tel">
+      <input class="input" id="a-pass" dir="ltr" type="password" placeholder="رمز عبور (حداقل ۶ کاراکتر)" maxlength="100" autocomplete="current-password">
+      <div class="a-err" id="a-err"></div>
+      <button class="btn-primary q-go" id="a-go" type="submit">ثبت‌نام</button>
+    </form>
   </div>
 </div>
 
@@ -106,6 +116,7 @@
           <div class="t-title">تایمر</div><div class="t-sub">شمارش معکوس</div>
         </div>
       </div>
+          <button class="btn-ghost" id="logout-btn" type="button">خروج از حساب <span id="logout-user" dir="ltr"></span></button>
     </section>
 
     <!-- Notes -->

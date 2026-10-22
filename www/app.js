@@ -500,27 +500,85 @@
   $('#q-en').textContent = LQ.q[0]; $('#q-fa').textContent = LQ.q[1];
   $('#q-day').textContent = jalali(new Date(), { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  function showQuote() { renderHome(); $('#quote-screen').classList.remove('hidden'); }
-  function showWelcome() {
-    var w = $('#welcome'); w.classList.remove('hidden');
-    $('#w-name').placeholder = 'اسمت رو بنویس…';
-    setTimeout(function () { $('#w-name').focus(); }, 600);
+  /* ---------- account (register / login) ---------- */
+  var CFGA = window.AE_CONFIG || {};
+  function authBase() { return String((S.coach && S.coach.url) || CFGA.AI_URL || '').trim().replace(/\/+$/, ''); }
+  function authApi(path, body) {
+    var u = authBase();
+    if (!u) return Promise.reject({ code: 'nourl' });
+    if (navigator.onLine === false) return Promise.reject({ code: 'offline' });
+    var ctl = new AbortController(), t = setTimeout(function () { ctl.abort(); }, 20000);
+    return fetch(u + path, { method: 'POST', signal: ctl.signal, headers: { 'Content-Type': 'application/json', 'x-ae-key': CFGA.KEY || '' }, body: JSON.stringify(body) })
+      .then(function (r) { return r.json().catch(function () { return {}; }).then(function (j) { clearTimeout(t); if (!r.ok) throw { code: j.error || ('http' + r.status) }; return j; }); })
+      .catch(function (e) { clearTimeout(t); if (e && e.name === 'AbortError') throw { code: 'timeout' }; if (e && e.code) throw e; throw { code: 'network' }; });
   }
-  function finishWelcome() {
-    var inp = $('#w-name'), v = inp.value.trim();
-    if (!v) { inp.classList.add('shake'); setTimeout(function () { inp.classList.remove('shake'); }, 400); return; }
-    S.name = v.slice(0, 24); S.named = true; save();
-    var w = $('#welcome'); w.classList.add('out'); setTimeout(function () { w.remove(); }, 450);
-    inp.blur(); showQuote();
+  var AERR = {
+    username: 'نام کاربری باید ۳ تا ۲۰ حرف انگلیسی/عدد/_ باشه', name: 'اسمت رو بنویس', phone: 'شماره تلفن درست نیست (مثل 09123456789)',
+    password: 'رمز باید حداقل ۶ کاراکتر باشه', username_taken: 'این نام کاربری قبلاً گرفته شده', phone_taken: 'این شماره قبلاً ثبت شده',
+    credentials: 'نام کاربری یا رمز اشتباهه', locked: 'چند بار اشتباه زدی؛ ۱۰ دقیقه صبر کن', no_db: 'سرور هنوز آماده‌ی ثبت‌نام نیست',
+    offline: 'اینترنت وصل نیست', network: 'به سرور وصل نشد', timeout: 'سرور دیر جواب داد، دوباره امتحان کن', nourl: 'آدرس سرور تنظیم نشده'
+  };
+  var authMode = 'register';
+  function setMode(m) {
+    authMode = m;
+    $$('#a-tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.m === m); });
+    $('#a-form').classList.toggle('login', m === 'login');
+    $('#a-go').textContent = m === 'login' ? 'ورود' : 'ثبت‌نام';
+    $('#a-sub').textContent = m === 'login' ? 'خوش برگشتی، وارد شو' : 'برای شروع یه حساب بساز';
+    $('#a-pass').autocomplete = m === 'login' ? 'current-password' : 'new-password';
+    $('#a-err').textContent = '';
   }
-  $('#w-go').addEventListener('click', finishWelcome);
-  $('#w-name').addEventListener('keydown', function (e) { if (e.key === 'Enter') finishWelcome(); });
+  function showAuth() {
+    $('#welcome').classList.remove('hidden');
+    setMode(S.named ? 'login' : 'register');
+    setTimeout(function () { $((authMode === 'login') ? '#a-user' : '#a-name').focus(); }, 600);
+  }
+  function onAuthed(r) {
+    S.auth = { token: r.token, username: r.user.username, phone: r.user.phone };
+    if (r.user.name) { S.name = r.user.name; S.named = true; }
+    save();
+    var w = $('#welcome'); w.classList.add('out'); setTimeout(function () { w.classList.add('hidden'); w.classList.remove('out'); }, 450);
+    $('#a-pass').value = ''; document.activeElement && document.activeElement.blur();
+    renderHome(); showQuote();
+  }
+  $$('#a-tabs button').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.m); }); });
+  $('#a-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var body = { username: $('#a-user').value.trim(), password: $('#a-pass').value };
+    if (authMode === 'register') { body.name = $('#a-name').value.trim(); body.phone = $('#a-phone').value.trim(); }
+    var err = $('#a-err'), go = $('#a-go');
+    err.textContent = '';
+    if (authMode === 'register' && !body.name) { err.textContent = AERR.name; return; }
+    if (!body.username || !body.password) { err.textContent = AERR[!body.username ? 'username' : 'password']; return; }
+    go.disabled = true; go.style.opacity = .6;
+    authApi(authMode === 'login' ? '/login' : '/register', body).then(onAuthed).catch(function (x) {
+      err.textContent = AERR[x.code] || 'یه مشکلی پیش اومد، دوباره امتحان کن';
+    }).then(function () { go.disabled = false; go.style.opacity = ''; });
+  });
+  function showQuote() {
+    renderHome();
+    $('#logout-user').textContent = S.auth ? '(' + S.auth.username + ')' : '';
+    var q = $('#quote-screen'); if (q) q.classList.remove('hidden');
+  }
+  $('#logout-btn').addEventListener('click', function () {
+    if (!confirm('از حساب خارج می‌شی؟ داده‌هات روی همین گوشی می‌مونن.')) return;
+    var t = S.auth && S.auth.token; delete S.auth; save();
+    if (t) authApi('/logout', { token: t }).catch(function () {});
+    location.reload();
+  });
+  // token still valid? only a definite "session" rejection logs out (offline keeps you in)
+  function verifySession() {
+    if (!S.auth) return;
+    authApi('/me', { token: S.auth.token }).then(function (r) {
+      if (r.user && r.user.name && r.user.name !== S.name) { S.name = r.user.name; save(); renderHome(); }
+    }).catch(function (x) { if (x && x.code === 'session') { delete S.auth; save(); location.reload(); } });
+  }
 
   var SPLASH_MS = 2900;
   setTimeout(function () {
     $('#splash').classList.add('out');
     $('#app').classList.remove('hidden');
-    if (S.named) showQuote(); else showWelcome();
+    if (S.auth) { showQuote(); verifySession(); } else showAuth();
     setTimeout(function () { $('#splash').remove(); }, 700);
   }, SPLASH_MS);
   $('#q-go').addEventListener('click', function () {
