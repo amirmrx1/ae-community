@@ -270,12 +270,61 @@ async function newSession(env, userId) {
   await env.DB.prepare('DELETE FROM sessions WHERE expires_at < ?').bind(Date.now()).run();
   return token;
 }
+
+/* ---------------- SMS verification (Melipayamak pattern/template) ---------------- */
+// Secrets: MELI_USER, MELI_PASS, MELI_BODY_ID (template id with ONE variable {0} = the code). If any is missing, registration works without SMS.
+const smsOn = (env) => !!(env.MELI_USER && env.MELI_PASS && env.MELI_BODY_ID);
+const OTP_TTL = 3 * 60000, OTP_GAP = 60000, OTP_HOUR_MAX = 5, OTP_TRIES = 5;
+async function sendSms(env, phone, code) {
+  const r = await fetch('https://rest.payamak-panel.com/api/SendSMS/BaseServiceNumber', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ username: String(env.MELI_USER), password: String(env.MELI_PASS), text: String(code), to: phone, bodyId: String(env.MELI_BODY_ID) }),
+  });
+  let j = {};
+  try { j = await r.json(); } catch (_) {}
+  if (!r.ok || Number(j.RetStatus) !== 1) {
+    console.error(JSON.stringify({ sms: 'fail', http: r.status, ret: j.RetStatus, msg: String(j.StrRetStatus || '').slice(0, 60) }));
+    throw bad('sms_failed');
+  }
+}
+async function otpSend(env, b) {
+  const phone = cleanPhone(b.phone);
+  if (!phone) throw bad('phone');
+  if (!smsOn(env)) return { skip: true };
+  if (await env.DB.prepare('SELECT 1 FROM users WHERE phone=?').bind(phone).first()) throw bad('phone_taken');
+  const now = Date.now();
+  const row = await env.DB.prepare('SELECT * FROM otp WHERE phone=?').bind(phone).first();
+  let winStart = now, winCount = 0;
+  if (row) {
+    if (now - row.last_sent < OTP_GAP) throw bad('too_soon');
+    if (now - row.win_start < 3600000) { winStart = row.win_start; winCount = row.win_count; }
+    if (winCount >= OTP_HOUR_MAX) throw bad('too_many');
+  }
+  const code = String(10000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90000));
+  await env.DB.prepare('INSERT INTO otp (phone,code_hash,expires_at,tries,last_sent,win_start,win_count) VALUES (?,?,?,?,?,?,?) ON CONFLICT(phone) DO UPDATE SET code_hash=excluded.code_hash, expires_at=excluded.expires_at, tries=0, last_sent=excluded.last_sent, win_start=excluded.win_start, win_count=excluded.win_count')
+    .bind(phone, await sha(phone + ':' + code), now + OTP_TTL, 0, now, winStart, winCount + 1).run();
+  await sendSms(env, phone, code);
+  return { sent: true, ttl: OTP_TTL / 1000, gap: OTP_GAP / 1000 };
+}
+async function otpCheck(env, phone, codeIn) {
+  const code = faDigits(codeIn).replace(/\D/g, '');
+  const row = await env.DB.prepare('SELECT * FROM otp WHERE phone=?').bind(phone).first();
+  if (!row || row.expires_at < Date.now()) throw bad('otp_expired');
+  if (row.tries >= OTP_TRIES) throw bad('otp_locked');
+  if ((await sha(phone + ':' + code)) !== row.code_hash) {
+    await env.DB.prepare('UPDATE otp SET tries=tries+1 WHERE phone=?').bind(phone).run();
+    throw bad('otp_wrong');
+  }
+  await env.DB.prepare('DELETE FROM otp WHERE phone=?').bind(phone).run();
+}
 async function register(env, b) {
   const username = cleanUser(b.username), name = String(b.name || '').trim().slice(0, 24), phone = cleanPhone(b.phone), pw = String(b.password || '');
   if (!/^[a-z0-9_.]{3,20}$/.test(username)) throw bad('username');
   if (!name) throw bad('name');
   if (!phone) throw bad('phone');
   if (pw.length < 6 || pw.length > 100) throw bad('password');
+  if (smsOn(env)) await otpCheck(env, phone, b.otp);
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const h = await hashPw(pw, salt);
   try {
@@ -336,9 +385,9 @@ export default {
     if (!body || typeof body !== 'object') return json({ error: 'json' }, 400, cx);
 
     try {
-      if (['/register', '/login', '/me', '/logout'].includes(url.pathname)) {
+      if (['/register', '/login', '/me', '/logout', '/otp'].includes(url.pathname)) {
         if (!env.DB) return json({ error: 'no_db' }, 503, cx);
-        const fn = { '/register': register, '/login': login, '/me': me, '/logout': logout }[url.pathname];
+        const fn = { '/register': register, '/login': login, '/me': me, '/logout': logout, '/otp': otpSend }[url.pathname];
         return json(await fn(env, body), 200, cx);
       }
       if (url.pathname === '/chat') return json(await chat(env, body), 200, cx);
@@ -347,7 +396,7 @@ export default {
       return json({ error: 'not_found' }, 404, cx);
     } catch (e) {
       console.error(JSON.stringify({ route: url.pathname, error: String((e && e.message) || e).slice(0, 200) }));
-      if (e && String(e.code || '').startsWith('auth_')) return json({ error: e.code.slice(5) }, e.code === 'auth_session' || e.code === 'auth_credentials' ? 401 : e.code === 'auth_locked' ? 429 : 400, cx);
+      if (e && String(e.code || '').startsWith('auth_')) return json({ error: e.code.slice(5) }, e.code === 'auth_session' || e.code === 'auth_credentials' ? 401 : ['auth_locked', 'auth_too_soon', 'auth_too_many', 'auth_otp_locked'].includes(e.code) ? 429 : e.code === 'auth_sms_failed' ? 502 : 400, cx);
       if (e && e.code === 'bad_input') return json({ error: 'bad_input' }, 400, cx);
       if (isLimit(e)) return json({ error: 'limit' }, 429, cx);
       return json({ error: 'ai' }, 502, cx);

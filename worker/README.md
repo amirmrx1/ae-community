@@ -30,3 +30,7 @@
 ## Accounts (register / login)
 Needs a D1 database bound as `DB` (database `ae-users`, tables `users` + `sessions`; schema in `worker/schema.sql`).
 Passwords are stored only as salted PBKDF2-SHA256 hashes; sessions are random tokens (stored hashed, 90 days).
+
+### SMS verification (Melipayamak)
+Worker secrets: `MELI_USER`, `MELI_PASS`, `MELI_BODY_ID` (pattern/template id whose text has one variable `{0}` = the code).
+If any is missing, registration works without SMS. Codes: 5 digits, 3 min, 5 tries, 60 s gap, 5 sends/hour per number.

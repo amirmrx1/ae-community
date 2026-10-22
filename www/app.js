@@ -516,7 +516,7 @@
     username: 'نام کاربری باید ۳ تا ۲۰ حرف انگلیسی/عدد/_ باشه', name: 'اسمت رو بنویس', phone: 'شماره تلفن درست نیست (مثل 09123456789)',
     password: 'رمز باید حداقل ۶ کاراکتر باشه', username_taken: 'این نام کاربری قبلاً گرفته شده', phone_taken: 'این شماره قبلاً ثبت شده',
     credentials: 'نام کاربری یا رمز اشتباهه', locked: 'چند بار اشتباه زدی؛ ۱۰ دقیقه صبر کن', no_db: 'سرور هنوز آماده‌ی ثبت‌نام نیست',
-    offline: 'اینترنت وصل نیست', network: 'به سرور وصل نشد', timeout: 'سرور دیر جواب داد، دوباره امتحان کن', nourl: 'آدرس سرور تنظیم نشده'
+    offline: 'اینترنت وصل نیست', otp_wrong: 'کد اشتباهه', otp_expired: 'کد منقضی شده؛ دوباره کد بگیر', otp_locked: 'چند بار اشتباه زدی؛ کد جدید بگیر', too_soon: 'یه کم صبر کن و دوباره امتحان کن', too_many: 'تعداد درخواست کد زیاد شد؛ بعداً امتحان کن', sms_failed: 'پیامک ارسال نشد؛ چند دقیقه بعد دوباره امتحان کن', network: 'به سرور وصل نشد', timeout: 'سرور دیر جواب داد، دوباره امتحان کن', nourl: 'آدرس سرور تنظیم نشده'
   };
   var authMode = 'register';
   function setMode(m) {
@@ -526,7 +526,7 @@
     $('#a-go').textContent = m === 'login' ? 'ورود' : 'ثبت‌نام';
     $('#a-sub').textContent = m === 'login' ? 'خوش برگشتی، وارد شو' : 'برای شروع یه حساب بساز';
     $('#a-pass').autocomplete = m === 'login' ? 'current-password' : 'new-password';
-    $('#a-err').textContent = '';
+    $('#a-err').textContent = ''; if (otpStage) setOtpStage(false);
   }
   function showAuth() {
     $('#welcome').classList.remove('hidden');
@@ -542,6 +542,28 @@
     renderHome(); showQuote();
   }
   $$('#a-tabs button').forEach(function (b) { b.addEventListener('click', function () { setMode(b.dataset.m); }); });
+  var otpStage = false, resendT = null;
+  function setOtpStage(on, phone) {
+    otpStage = on; $('#a-form').classList.toggle('otp', on);
+    $('#a-otp').style.display = on ? '' : 'none'; $('#a-resend').style.display = on ? '' : 'none';
+    $('#a-go').textContent = on ? 'تأیید و ساخت حساب' : (authMode === 'login' ? 'ورود' : 'ثبت‌نام');
+    if (on) { $('#a-sub').textContent = 'کد ارسال‌شده به ' + phone + ' رو وارد کن'; $('#a-otp').value = ''; setTimeout(function () { $('#a-otp').focus(); }, 100); }
+  }
+  function startResend(sec) {
+    var b = $('#a-resend'); clearInterval(resendT); var left = sec;
+    function tick() { if (left > 0) { b.disabled = true; b.textContent = 'ارسال مجدد کد تا ' + left + ' ثانیه دیگه'; left--; } else { clearInterval(resendT); b.disabled = false; b.textContent = 'ارسال مجدد کد'; } }
+    tick(); resendT = setInterval(tick, 1000);
+  }
+  function sendOtp(body, go, err) {
+    return authApi('/otp', { phone: body.phone }).then(function (r) {
+      if (r.skip) return authApi('/register', body).then(onAuthed);
+      setOtpStage(true, body.phone); startResend(r.gap || 60);
+    });
+  }
+  $('#a-resend').addEventListener('click', function () {
+    var err = $('#a-err'); err.textContent = '';
+    sendOtp({ phone: $('#a-phone').value.trim() }).catch(function (x) { err.textContent = AERR[x.code] || 'ارسال نشد'; });
+  });
   $('#a-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var body = { username: $('#a-user').value.trim(), password: $('#a-pass').value };
@@ -550,9 +572,19 @@
     err.textContent = '';
     if (authMode === 'register' && !body.name) { err.textContent = AERR.name; return; }
     if (!body.username || !body.password) { err.textContent = AERR[!body.username ? 'username' : 'password']; return; }
+    var p;
+    if (authMode === 'login') p = authApi('/login', body).then(onAuthed);
+    else if (otpStage) { body.otp = $('#a-otp').value.trim(); if (!body.otp) { err.textContent = AERR.otp_wrong; return; } p = authApi('/register', body).then(onAuthed); }
+    else {
+      if (!/^[a-zA-Z0-9_.]{3,20}$/.test(body.username)) { err.textContent = AERR.username; return; }
+      if (body.password.length < 6) { err.textContent = AERR.password; return; }
+      p = sendOtp(body);
+    }
     go.disabled = true; go.style.opacity = .6;
-    authApi(authMode === 'login' ? '/login' : '/register', body).then(onAuthed).catch(function (x) {
+    p.catch(function (x) {
       err.textContent = AERR[x.code] || 'یه مشکلی پیش اومد، دوباره امتحان کن';
+      if (x.code === 'otp_expired' || x.code === 'otp_locked') { /* user can tap resend */ }
+      if (x.code === 'username_taken' || x.code === 'phone_taken' || x.code === 'username' || x.code === 'phone') setOtpStage(false);
     }).then(function () { go.disabled = false; go.style.opacity = ''; });
   });
   function showQuote() {

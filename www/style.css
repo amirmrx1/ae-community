@@ -276,3 +276,7 @@ body.pomo-break .ring-fg{stroke:#3ddc84;filter:drop-shadow(0 0 8px rgba(61,220,1
 #a-form .q-go{margin-top:10px}
 #a-form.login #a-name,#a-form.login #a-phone{display:none}
 .btn-ghost{display:block;width:100%;margin:22px 0 8px;background:transparent;border:1px solid var(--line);color:var(--mut);border-radius:14px;padding:12px;font:inherit;font-size:13px}
+
+.a-resend{display:block;margin:-2px auto 6px;background:transparent;border:0;color:var(--mut);font:inherit;font-size:13px;padding:6px}
+.a-resend:not(:disabled){color:#b58cff;text-decoration:underline}
+#a-form.otp #a-name,#a-form.otp #a-user,#a-form.otp #a-phone,#a-form.otp #a-pass{display:none}
