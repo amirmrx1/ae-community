@@ -275,11 +275,12 @@ async function newSession(env, userId) {
 // Secrets: MELI_USER, MELI_PASS, MELI_BODY_ID (template id with ONE variable {0} = the code). If any is missing, registration works without SMS.
 const smsOn = (env) => !!(env.MELI_USER && env.MELI_PASS && env.MELI_BODY_ID);
 const OTP_TTL = 3 * 60000, OTP_GAP = 60000, OTP_HOUR_MAX = 5, OTP_TRIES = 5;
-async function sendSms(env, phone, code) {
+async function sendSms(env, phone, name, code) {
+  const nm = String(name || 'دوست').replace(/[;\n\r]/g, ' ').trim().slice(0, 24) || 'دوست';
   const r = await fetch('https://rest.payamak-panel.com/api/SendSMS/BaseServiceNumber', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ username: String(env.MELI_USER), password: String(env.MELI_PASS), text: String(code), to: phone, bodyId: String(env.MELI_BODY_ID) }),
+    body: new URLSearchParams({ username: String(env.MELI_USER), password: String(env.MELI_PASS), text: nm + ';' + code, to: phone, bodyId: String(env.MELI_BODY_ID) }),
   });
   let j = {};
   try { j = await r.json(); } catch (_) {}
@@ -304,7 +305,7 @@ async function otpSend(env, b) {
   const code = String(10000 + (crypto.getRandomValues(new Uint32Array(1))[0] % 90000));
   await env.DB.prepare('INSERT INTO otp (phone,code_hash,expires_at,tries,last_sent,win_start,win_count) VALUES (?,?,?,?,?,?,?) ON CONFLICT(phone) DO UPDATE SET code_hash=excluded.code_hash, expires_at=excluded.expires_at, tries=0, last_sent=excluded.last_sent, win_start=excluded.win_start, win_count=excluded.win_count')
     .bind(phone, await sha(phone + ':' + code), now + OTP_TTL, 0, now, winStart, winCount + 1).run();
-  await sendSms(env, phone, code);
+  await sendSms(env, phone, b.name, code);
   return { sent: true, ttl: OTP_TTL / 1000, gap: OTP_GAP / 1000 };
 }
 async function otpCheck(env, phone, codeIn) {

@@ -557,14 +557,14 @@
     tick(); resendT = setInterval(tick, 1000);
   }
   function sendOtp(body, go, err) {
-    return authApi('/otp', { phone: body.phone }).then(function (r) {
+    return authApi('/otp', { phone: body.phone, name: body.name }).then(function (r) {
       if (r.skip) return authApi('/register', body).then(onAuthed);
       setOtpStage(true, body.phone); startResend(r.gap || 60);
     });
   }
   $('#a-resend').addEventListener('click', function () {
     var err = $('#a-err'); err.textContent = '';
-    sendOtp({ phone: $('#a-phone').value.trim() }).catch(function (x) { err.textContent = AERR[x.code] || 'ارسال نشد'; });
+    sendOtp({ phone: $('#a-phone').value.trim(), name: $('#a-name').value.trim() }).catch(function (x) { err.textContent = AERR[x.code] || 'ارسال نشد'; });
   });
   $('#a-form').addEventListener('submit', function (e) {
     e.preventDefault();
