@@ -199,7 +199,8 @@
       var hero = root.querySelector('.w-hero'); if (hero) { splash(hero); var dd = hero.querySelector('.w-drop'); if (dd) { dd.classList.remove('gulp'); void dd.offsetWidth; dd.classList.add('gulp'); } }
     }
     if (done) { confetti(); setTimeout(function () { A.toast('🎉 هدف امروز کامل شد!'); }, 900); }
-    checkAch().forEach(function (a, i) { setTimeout(function () { A.toast('🏆 دستاورد جدید: ' + a.n); }, 1800 + i * 2200); });
+    var fresh = checkAch(); if (fresh.length) A.save();
+    fresh.forEach(function (a, i) { setTimeout(function () { A.toast('🏆 دستاورد جدید: ' + a.n); }, 1800 + i * 2200); });
     refresh(); scheduleReminders();
   }
   function removeItem(k, id) {
