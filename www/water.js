@@ -12,12 +12,12 @@
   var DRINKS = [
     { id: 'water', n: 'آب', ico: '💧', f: 1 },
     { id: 'sparkling', n: 'آب گازدار', ico: '🫧', f: 1 },
-    { id: 'tea', n: 'چای', ico: '🍵', f: 0.9 },
-    { id: 'coffee', n: 'قهوه', ico: '☕', f: 0.8 },
-    { id: 'juice', n: 'آبمیوه', ico: '🧃', f: 0.85 },
-    { id: 'milk', n: 'شیر', ico: '🥛', f: 0.9 },
-    { id: 'doogh', n: 'دوغ', ico: '🍶', f: 0.9 },
-    { id: 'soda', n: 'نوشابه', ico: '🥤', f: 0.7 }
+    { id: 'tea', n: 'چای', ico: '🍵', f: 1 },
+    { id: 'coffee', n: 'قهوه', ico: '☕', f: 1 },
+    { id: 'juice', n: 'آبمیوه', ico: '🧃', f: 1 },
+    { id: 'milk', n: 'شیر', ico: '🥛', f: 1 },
+    { id: 'doogh', n: 'دوغ', ico: '🍶', f: 1 },
+    { id: 'soda', n: 'نوشابه', ico: '🥤', f: 1 }
   ];
   var ACT = [{ n: 'کم', m: 0.9 }, { n: 'متوسط', m: 1 }, { n: 'زیاد', m: 1.15 }, { n: 'خیلی زیاد', m: 1.3 }];
   var CHARS = [
@@ -44,6 +44,10 @@
     w.days = w.days || {}; w.ach = w.ach || {};
     w.rem = w.rem || { on: false, every: 90, from: 8, to: 22 };
     if (typeof w.char !== 'number') w.char = 0;
+    if (w.v !== 2) { // v2: built-in drinks all count 100% (study evidence), fix older entries once
+      Object.keys(w.days).forEach(function (k) { (w.days[k].items || []).forEach(function (x) { if (!/^c\d/.test(String(x.d))) x.f = 1; }); });
+      w.v = 2; setTimeout(function () { A.save(); }, 0);
+    }
     w.tab = w.tab || 'today';
     return w;
   }
@@ -55,7 +59,7 @@
   function total(k) { var r = rec(k); if (!r) return 0; return r.items.reduce(function (s, x) { return s + Math.round(x.ml * x.f); }, 0); }
   function goalOf(k) { var r = rec(k); return (r && r.goal) || W().goal; }
   function hit(k) { return total(k) >= goalOf(k) && total(k) > 0; }
-  function pct(k) { return Math.min(100, Math.round(total(k) / goalOf(k) * 100)); }
+  function pct(k) { return Math.min(100, Math.floor(total(k) / goalOf(k) * 100)); }
   function ml(n) { return fa(Math.round(n)); }
   function calcGoal(w) {
     var base = w.weight * 33 * (w.gender === 'f' ? 0.92 : 1) * (ACT[w.act] || ACT[1]).m;
@@ -279,7 +283,7 @@
   /* --- today tab --- */
   function bodyToday(el) {
     var w = W(), dr = drinkOf(w.drink), k = key(0);
-    var h = '<button type="button" class="w-big" id="w-add"><span class="wb-ico">' + dr.ico + '</span><span class="wb-t">+ ' + ml(w.cup) + ' میلی‌لیتر</span><span class="wb-s">' + esc(dr.n) + (dr.f < 1 ? ' · ' + fa(Math.round(dr.f * 100)) + '٪ آبرسانی' : '') + '</span></button>';
+    var h = '<button type="button" class="w-big" id="w-add"><span class="wb-ico">' + dr.ico + '</span><span class="wb-t">+ ' + ml(w.cup) + ' میلی‌لیتر</span><span class="wb-s">' + esc(dr.n) + (dr.f < 1 ? ' · ' + fa(Math.round(dr.f * 100)) + '٪ حساب می‌شه' : '') + '</span></button>';
     h += '<div class="w-lbl">اندازه‌ی لیوان</div><div class="w-chips" id="w-cups">' +
       w.cups.map(function (c) { return '<button type="button" data-c="' + c + '" class="' + (c === w.cup ? 'on' : '') + '">' + ml(c) + '</button>'; }).join('') +
       '<button type="button" data-c="x" class="plus">+ دلخواه</button></div>';
@@ -329,10 +333,10 @@
     var k = key(0), r = rec(k);
     if (!r || !r.items.length) return '';
     var p = pct(k), eff = total(k), n = r.items.length, first = new Date(r.items[0].t), last = new Date(r.items[n - 1].t);
-    var avg7 = 0, c = 0; for (var i = -6; i <= 0; i++) { if (rec(key(i))) { avg7 += total(key(i)); c++; } }
+    var avg7 = 0, c = 0; for (var i = -7; i <= -1; i++) { if (rec(key(i))) { avg7 += total(key(i)); c++; } }
     avg7 = c ? Math.round(avg7 / c) : 0;
     var t = fa(n) + ' بار نوشیدی و ' + fa(p) + '٪ هدف رو رفتی. اولین ثبتت ساعت ' + A.jalali(first, { hour: '2-digit', minute: '2-digit', hour12: false }) + ' بود.';
-    if (c > 1) t += ' میانگین هفته‌ات ' + ml(avg7) + ' میلی‌لیتر در روزه' + (eff >= avg7 ? ' و امروز بالاترشی 👏' : '.');
+    if (c > 0) t += ' میانگین روزهای قبلیت ' + ml(avg7) + ' میلی‌لیتر بوده' + (eff > avg7 ? ' و امروز از اون بالاتری 👏' : '.');
     return '<div class="w-lbl">خلاصه‌ی امروز</div><div class="card w-recap">' + t + '</div>';
   }
 
@@ -383,7 +387,7 @@
         '<div class="ws-r"><label>تا ساعت</label><select class="input" id="s-to">' + hours(w.rem.to, 16, 24) + '</select></div>' +
         '<div class="ws-note">وقتی به هدف روز برسی، یادآوری‌های اون روز خودکار قطع می‌شه. اگه اعلان نیومد، اجازه‌ی نوتیفیکیشن اپ رو تو تنظیمات گوشی چک کن.</div>';
     }
-    h += '</div><button type="button" class="btn-ghost" id="s-reset">پاک کردن ثبت‌های امروز</button>';
+    h += '</div><div class="card w-set"><div class="ws-t">درباره‌ی نوشیدنی‌ها</div><div class="ws-note">طبق مطالعه‌های بالینی (مثل Maughan و همکاران ۲۰۱۶)، چای، قهوه، آبمیوه و آب گازدار در مصرف معمول تقریباً مثل آب هیدراته می‌کنن و شیر حتی بیشتر. برای همین همه‌ی نوشیدنی‌های آماده ۱۰۰٪ حساب می‌شن. ولی قند و کافئین زیاد رو یادت باشه؛ آب ساده همچنان بهترینه. برای نوشیدنی‌های خاص (مثل انرژی‌زا) می‌تونی ضریب دلخواه بدی.</div></div><button type="button" class="btn-ghost" id="s-reset">پاک کردن ثبت‌های امروز</button>';
     el.innerHTML = h;
     var q = function (s) { return el.querySelector(s); };
     q('#s-auto').addEventListener('click', function () { w.auto = !w.auto; if (w.auto) { w.goal = calcGoal(w); } A.save(); refresh(); });
