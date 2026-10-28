@@ -88,6 +88,7 @@
     if (name === 'home') renderHome();
     if (name === 'gym') renderGym();
     if (name === 'coach' && window.AECoach) window.AECoach.render();
+    if (name === 'tasks' && window.AEWater) window.AEWater.renderCard();
   }
   document.addEventListener('click', function (e) {
     var t = e.target.closest('[data-go]'); if (!t) return;
@@ -486,7 +487,8 @@
   /* ---------- bridge for coach.js ---------- */
   window.AE = {
     S: S, save: save, toast: toast, fa: fa, jalali: jalali, dayKey: dayKey, uid: uid, go: go,
-    refreshTasks: function () { renderTasks(); renderHome(); }
+    refreshTasks: function () { renderTasks(); renderHome(); },
+    plugin: plugin, ensurePerm: ensurePerm
   };
 
   /* ---------- boot ---------- */
