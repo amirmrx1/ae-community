@@ -208,16 +208,15 @@
 
   /* ---------- palette (own colours, from the cover) ---------- */
   var ROOT = document.documentElement;
-  function setTheme(t) {
-    var h = t ? t.h : 18, s = Math.round((t ? t.s : 0.85) * 100);
-    ROOT.style.setProperty('--mc', 'hsl(' + h + ' ' + s + '% 60%)');
-    ROOT.style.setProperty('--mc2', 'hsl(' + (h + 38) + ' ' + Math.min(95, s + 8) + '% 55%)');
-    ROOT.style.setProperty('--mc3', 'hsl(' + (h - 70 + 360) % 360 + ' ' + s + '% 48%)');
-    ROOT.style.setProperty('--mcd', 'hsl(' + h + ' ' + Math.min(80, s) + '% 12%)');
+  function setTheme() {
+    ROOT.style.setProperty('--mc', '#9b5bff');
+    ROOT.style.setProperty('--mc2', '#8342eb');
+    ROOT.style.setProperty('--mc3', '#5b2fd0');
+    ROOT.style.setProperty('--mcd', '#120a24');
   }
-  function gradFor(t) { return 'linear-gradient(135deg,hsl(' + t.h + ' ' + Math.round(t.s * 100) + '% 58%),hsl(' + ((t.h + 45) % 360) + ' ' + Math.round(t.s * 100) + '% 42%))'; }
+  function gradFor(t) { return 'linear-gradient(135deg,hsl(' + (255 + t.h % 50) + ' 75% 62%),hsl(' + (270 + t.h % 40) + ' 70% 42%))'; }
   function cvr(t, cls, noIcon) {
-    if (!t) return '<div class="mcv ' + (cls || '') + '" style="background:linear-gradient(135deg,#ff8a3d,#ff3d81)">' + (noIcon ? '' : ico('note')) + '</div>';
+    if (!t) return '<div class="mcv ' + (cls || '') + '" style="background:linear-gradient(135deg,#9b5bff,#8342eb)">' + (noIcon ? '' : ico('note')) + '</div>';
     if (t.cover) return '<div class="mcv ' + (cls || '') + '" style="background-image:url(\'' + t.cover + '\')"></div>';
     return '<div class="mcv ' + (cls || '') + '" style="background:' + gradFor(t) + '">' + (noIcon ? '' : ico('note')) + '</div>';
   }
