@@ -512,3 +512,5 @@ body.has-mini .view{padding-bottom:170px}
 .xtags{display:flex;flex-wrap:wrap;gap:6px;padding:0 2px}.xtag{font-size:12px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.08)}.xtag.on{background:linear-gradient(135deg,var(--mc),var(--mc2));font-weight:700}
 .xinfo{display:flex;justify-content:space-around;text-align:center;border-radius:18px;padding:12px;margin:14px 0}.xinfo small{display:block;font-size:11px;opacity:.6}.xinfo b{font-size:13px}
 .xsteps{padding:0 22px 0 4px;margin:4px 0 12px;font-size:13.5px;line-height:1.75;opacity:.92}.xsteps li{margin-bottom:8px;text-align:left}
+
+.xsteps li{text-align:start}.xen2{margin:4px 0 12px;font-size:12px;opacity:.8}.xen2 summary{cursor:pointer;color:var(--mc);padding:6px 4px}

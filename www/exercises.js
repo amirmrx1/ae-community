@@ -103,7 +103,7 @@
       '<h2 class="xdn">' + esc(it.f) + '</h2><div class="xde" dir="ltr">' + esc(it.n) + '</div>' +
       '<div class="xlbl">عضله اصلی</div><div class="xtags">' + mp + '</div>' + (ms ? '<div class="xlbl">عضلات کمکی</div><div class="xtags">' + ms + '</div>' : '') +
       '<div class="xinfo glass"><div><small>وسیله</small><b>' + esc(EQ[it.e] || it.e) + '</b></div><div><small>سطح</small><b>' + esc(LV[it.l] || it.l) + '</b></div><div><small>نوع</small><b>' + esc(CT[it.c] || it.c) + '</b></div></div>' +
-      '<div class="xlbl">طرز اجرا <em class="xen">(متن انگلیسی)</em></div><ol class="xsteps" dir="ltr">' + it.t.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
+      (it.tf ? '<div class="xlbl">طرز اجرا</div><ol class="xsteps">' + it.tf.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol><details class="xen2"><summary>مشاهده‌ی متن انگلیسی</summary><ol class="xsteps" dir="ltr">' + it.t.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol></details>' : '<div class="xlbl">طرز اجرا <em class="xen">(فعلاً فقط انگلیسی)</em></div><ol class="xsteps" dir="ltr">' + it.t.map(function (s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>') +
       '<div class="m-hint sm">برای آموزش بیشتر با مربی مشورت کن. با وزنه‌ی سبک شروع کن و فرم درست رو به وزن بالاتر ترجیح بده.</div></div>';
     d.classList.remove('hidden');
     $('#xd-close').onclick = function () { d.classList.add('hidden'); V.sel = -1; };
