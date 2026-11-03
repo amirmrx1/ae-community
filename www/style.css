@@ -482,3 +482,33 @@ body.has-mini .view{padding-bottom:170px}
 .sheetlist{max-height:48vh;overflow-y:auto}.trk.static{padding:4px 8px}
 .trk.pick .chk{width:24px;height:24px;border-radius:50%;border:2px solid rgba(255,255,255,.3);display:grid;place-items:center;font-size:13px;color:#fff;flex:none}.trk.pick.sel .chk{background:var(--mc);border-color:var(--mc)}
 .m-mini #mm-prev{order:3}.m-mini #mm-pp{order:2}.m-mini #mm-next{order:1}
+
+/* ===== Exercise library ===== */
+#ex-card{margin:0 0 16px}
+.xcard{width:100%;display:flex;align-items:center;gap:12px;border-radius:22px;padding:14px;color:#fff;text-align:start;background:linear-gradient(135deg,rgba(155,91,255,.28),rgba(131,66,235,.1)),rgba(255,255,255,.05)}
+.xcard b{display:block;font-size:15px}.xcard small{display:block;font-size:11.5px;opacity:.65;margin-top:3px}.xcard>svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;transform:scaleX(-1);opacity:.6}
+.xic{width:48px;height:48px;border-radius:16px;display:grid;place-items:center;font-size:24px;background:linear-gradient(135deg,var(--mc),var(--mc2));flex:none}
+#ex{position:fixed;inset:0;z-index:105;color:#fff;background:#07060a;overflow:hidden}#ex.hidden{display:none}
+#ex svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.x-screen{position:absolute;inset:0;overflow-y:auto;padding:calc(var(--st) + 10px) 16px calc(var(--sb) + 30px)}
+.xlbl{font-size:12px;opacity:.65;margin:12px 4px 6px}.xen{font-style:normal;opacity:.6;font-size:11px}
+.xchips{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}.xchips::-webkit-scrollbar{display:none}
+.xchips button{flex:none;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.07);color:#fff;border-radius:999px;padding:7px 13px;font-size:12.5px}
+.xchips button.on{background:linear-gradient(135deg,var(--mc),var(--mc2));border-color:transparent;font-weight:700}
+.xcount{font-size:12px;opacity:.6;margin:14px 4px 8px}
+.xrow{width:100%;display:flex;align-items:center;gap:12px;border-radius:18px;padding:8px;margin-bottom:8px;color:#fff;text-align:start;position:relative}
+.xth{width:64px;height:64px;border-radius:14px;overflow:hidden;background:#fff;flex:none;display:grid;place-items:center}.xth img{width:100%;height:100%;object-fit:cover}.xth.none{background:rgba(255,255,255,.08);font-size:26px}
+.xtx{min-width:0;flex:1}.xtx b{display:block;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.xtx small{display:block;font-size:11px;opacity:.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}.xtx span{display:block;font-size:11.5px;color:var(--mc);margin-top:2px}
+.xf{position:absolute;top:8px;inset-inline-end:10px;color:var(--mc);font-style:normal;font-size:13px}
+.xmore{width:100%;margin-top:6px}#x-more{padding-top:4px}
+.x-detail{position:absolute;inset:0;background:#07060a;z-index:3}.x-detail.hidden{display:none}
+.x-dscroll{position:absolute;inset:0;overflow-y:auto;padding:calc(var(--st) + 10px) 16px calc(var(--sb) + 30px)}
+.xanim{position:relative;width:100%;aspect-ratio:1;max-width:420px;margin:4px auto 14px;border-radius:26px;overflow:hidden;background:#fff;box-shadow:0 20px 50px -14px var(--mc);display:grid;place-items:center;font-size:60px}
+.xanim img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}.xanim img.b{animation:xfl 1.6s steps(1,end) infinite}
+@keyframes xfl{0%,45%{opacity:0}50%,95%{opacity:1}100%{opacity:0}}
+.xanim img.b{animation:xfl2 1.8s ease-in-out infinite}@keyframes xfl2{0%,40%{opacity:0}55%,90%{opacity:1}100%{opacity:0}}
+.xbadge{position:absolute;bottom:10px;inset-inline-start:10px;background:rgba(0,0,0,.55);color:#fff;font-size:11px;padding:4px 10px;border-radius:999px}
+.xdn{font-size:21px;margin:6px 4px 2px}.xde{font-size:12.5px;opacity:.55;margin:0 4px 6px;text-align:right}
+.xtags{display:flex;flex-wrap:wrap;gap:6px;padding:0 2px}.xtag{font-size:12px;padding:5px 12px;border-radius:999px;background:rgba(255,255,255,.08)}.xtag.on{background:linear-gradient(135deg,var(--mc),var(--mc2));font-weight:700}
+.xinfo{display:flex;justify-content:space-around;text-align:center;border-radius:18px;padding:12px;margin:14px 0}.xinfo small{display:block;font-size:11px;opacity:.6}.xinfo b{font-size:13px}
+.xsteps{padding:0 22px 0 4px;margin:4px 0 12px;font-size:13.5px;line-height:1.75;opacity:.92}.xsteps li{margin-bottom:8px;text-align:left}
