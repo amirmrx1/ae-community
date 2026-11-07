@@ -277,6 +277,13 @@
     return au.play().catch(function () {});
   }
   function pause() { au.pause(); }
+  function stopAndHide() {
+    au.pause(); au.removeAttribute('src'); try { au.load(); } catch (e) {}
+    if (curUrl) { URL.revokeObjectURL(curUrl); curUrl = null; }
+    loadTok++; cur = null; Q = { base: [], ids: [], i: -1, plId: null }; M().last = null; A.save();
+    try { if ('mediaSession' in navigator) { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = 'none'; } } catch (e) {}
+    stopSleepUI(); setTheme(null); renderAll();
+  }
   function toggle() { if (au.paused) play(); else pause(); }
   function playIds(ids, startId, plId) { if (!ids.length) { A.toast('اینجا آهنگی نیست'); return; } var s = setQueue(ids, startId, plId); errRun = 0; load(s, true); }
   function next(auto) {
@@ -647,9 +654,10 @@
     if (!show) { miniHost.innerHTML = ''; miniHost.className = 'hidden'; return; }
     miniHost.className = 'm-mini glass';
     miniHost.innerHTML = '<div class="mm" id="mm-open">' + cvr(cur, 'mini') + '<div class="grow tx"><b>' + esc(cur.title) + '</b><small>' + esc(cur.artist || 'ناشناس') + '</small></div></div>' +
-      '<button type="button" class="ib" id="mm-prev" aria-label="قبلی">' + ico('prev') + '</button><button type="button" class="ib pp mpp" id="mm-pp" aria-label="پخش/توقف">' + ico(isPlaying() ? 'pause' : 'play') + '</button><button type="button" class="ib" id="mm-next" aria-label="بعدی">' + ico('next') + '</button><div class="mpb"><i></i></div>';
+      '<button type="button" class="ib" id="mm-prev" aria-label="قبلی">' + ico('prev') + '</button><button type="button" class="ib pp mpp" id="mm-pp" aria-label="پخش/توقف">' + ico(isPlaying() ? 'pause' : 'play') + '</button><button type="button" class="ib" id="mm-next" aria-label="بعدی">' + ico('next') + '</button><button type="button" class="ib mmx" id="mm-x" aria-label="بستن پلیر">' + ico('x') + '</button><div class="mpb"><i></i></div>';
     $('#mm-open', miniHost).onclick = function () { V.from = 'mini'; open('player'); };
     $('#mm-prev', miniHost).onclick = prev; $('#mm-pp', miniHost).onclick = toggle; $('#mm-next', miniHost).onclick = function () { next(false); };
+    $('#mm-x', miniHost).onclick = stopAndHide;
     miniProg();
   }
   function renderGym() {
